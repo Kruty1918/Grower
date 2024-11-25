@@ -1,91 +1,58 @@
- 
 using UnityEngine;
 
-public class SwipeDetection : MonoBehaviour
+namespace Grower
 {
-
-    [SerializeField]
-    private float minimumDistance = .2f;
-
-    [SerializeField] 
-    private float maximumTime = 1f;
-
-    [SerializeField, Range(0f, 1f)] 
-    private float directionThreshold = .9f;
-
-
-    private InputManager inputManager;
-
-    private Vector2 startPosition;
-    private float startTime;
-    private Vector2 endPosition;
-    private float endTime;
-
-    private void Awake()
+    public class SwipeInputHandler : InputHandler
     {
-        inputManager = InputManager.Instance;
-    }
+        private readonly float minimumDistance;
+        private readonly float maximumTime;
+        private readonly float directionThreshold;
+        private Vector2 startPosition;
+        private float startTime;
 
-    private void OnEnable()
-    {
-        inputManager.OnStartTouch += SwipeStart;
-        inputManager.OnEndTouch += SwipeEnd;
-    }
+        public event System.Action<SwipeType, Vector2> OnSwipe;
 
-    private void OnDisable()
-    {
-        inputManager.OnStartTouch -= SwipeStart;
-        inputManager.OnEndTouch -= SwipeEnd;
-    }
-
-    private void SwipeStart(Vector2 position, float time)
-    {
-        startPosition = position;
-        startTime = time;
-    }
-
-    private void SwipeEnd(Vector2 position, float time)
-    {
-        endPosition = position;
-        endTime = time;
-        DetectSwipe();
-    }
-
-    private void DetectSwipe() 
-    {
-        if(Vector3.Distance(startPosition, endPosition) >= minimumDistance &&
-        (endTime - startTime) <= maximumTime) 
+        public SwipeInputHandler(float minDist, float maxTime, float dirThreshold)
         {
-            Debug.Log("Swipe Detect");
-            Debug.DrawLine(startPosition, endPosition, Color.red, 5f);
-            Vector3 direction = endPosition - startPosition;
-            Vector2 direction2D = new Vector2(direction.x, direction.y).normalized;
-            SwipeDirection(direction2D);
+            minimumDistance = minDist;
+            maximumTime = maxTime;
+            directionThreshold = dirThreshold;
+        }
+
+        public override void HandleInputStart(Vector2 position, float time)
+        {
+            startPosition = position;
+            startTime = time;
+        }
+
+        public override void HandleInputEnd(Vector2 position, float time)
+        {
+            if (IsValidSwipe(position, time))
+            {
+                Vector2 direction = (position - startPosition).normalized;
+                DetectSwipeDirection(direction);
+            }
+        }
+
+        private bool IsValidSwipe(Vector2 position, float time)
+        {
+            float distance = Vector2.Distance(startPosition, position);
+            float duration = time - startTime;
+
+            return distance >= minimumDistance && duration <= maximumTime;
+        }
+
+        private void DetectSwipeDirection(Vector2 direction)
+        {
+            if (Vector2.Dot(Vector2.up, direction) > directionThreshold)
+                OnSwipe?.Invoke(SwipeType.Up, direction);
+            else if (Vector2.Dot(Vector2.down, direction) > directionThreshold)
+                OnSwipe?.Invoke(SwipeType.Down, direction);
+            else if (Vector2.Dot(Vector2.left, direction) > directionThreshold)
+                OnSwipe?.Invoke(SwipeType.Left, direction);
+            else if (Vector2.Dot(Vector2.right, direction) > directionThreshold)
+                OnSwipe?.Invoke(SwipeType.Right, direction);
         }
     }
 
-    private void SwipeDirection(Vector2 direction) 
-    {
-        if(Vector2.Dot(Vector2.up, direction) > directionThreshold) 
-        {
-            Debug.Log("Swipe Up");
-            
-        }
-    
-
-        else if(Vector2.Dot(Vector2.down, direction) > directionThreshold) 
-        {
-            Debug.Log("Swipe Down");
-        }
-       
-        else if(Vector2.Dot(Vector2.left, direction) > directionThreshold) 
-        {
-            Debug.Log("Swipe Left");
-        }
-        
-        else if(Vector2.Dot(Vector2.right, direction) > directionThreshold) 
-        {
-            Debug.Log("Swipe Right");
-        }
-    }
 }

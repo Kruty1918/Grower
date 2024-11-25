@@ -1,60 +1,63 @@
-
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-[DefaultExecutionOrder(-1)]
-public class InputManager : Singleton<InputManager>
+namespace Grower
 {
-
-
-    #region Events
-    public delegate void StartTouch(Vector2 position, float time);
-    public event StartTouch OnStartTouch;
-    public delegate void EndTouch(Vector2 position, float time);
-    public event EndTouch OnEndTouch;
-    #endregion
-    
-   private PlayerControls playerControls;
-
-   private Camera mainCamera;
-
-   private void Awake()
-   {
-        playerControls = new PlayerControls();
-        mainCamera = Camera.main;
-   }
-
-   private void OnEnable() 
-   {
-        playerControls.Enable();
-   }
-
-   private void OnDisable()
-   {
-    playerControls.Disable();
-   }
-
-
-    
-    void Update()
+    public class InputManager : MonoBehaviour, ISwipeListener
     {
-        playerControls.Touch.PrimaryContact.started += ctx => StartTouchPrimary(ctx);
-        playerControls.Touch.PrimaryContact.canceled += ctx => EndTouchPrimary(ctx);
-    }
+        private PlayerControls playerControls;
+        private Camera mainCamera;
 
-    private void StartTouchPrimary(InputAction.CallbackContext context)
-    {
-        if(OnStartTouch != null) OnStartTouch(Utils.ScreenToWorld(mainCamera, playerControls.Touch.PrimaryPosition.ReadValue<Vector2>()), (float)context.startTime);
-    }
+        private InputHandler inputHandler;
 
-      private void EndTouchPrimary(InputAction.CallbackContext context)
-    {
-        if(OnEndTouch != null) OnEndTouch(Utils.ScreenToWorld(mainCamera, playerControls.Touch.PrimaryPosition.ReadValue<Vector2>()), (float)context.time);
-    }
+        private void Awake()
+        {
+            playerControls = new PlayerControls();
+            mainCamera = Camera.main;
 
+            // Ініціалізуємо SwipeInputHandler через InputHandler
+            inputHandler = new SwipeInputHandler(0.2f, 1f, 0.9f);
+            if (inputHandler is SwipeInputHandler swipeInputHandler)
+            {
+                swipeInputHandler.OnSwipe += OnSwipe;
+            }
+        }
 
-    public Vector2 PrimaryPosition()
-    {
-        return Utils.ScreenToWorld(mainCamera, playerControls.Touch.PrimaryPosition.ReadValue<Vector2>());
+        private void OnEnable()
+        {
+            playerControls.Enable();
+            playerControls.Touch.PrimaryContact.started += StartInput;
+            playerControls.Touch.PrimaryContact.canceled += EndInput;
+        }
+
+        private void OnDisable()
+        {
+            playerControls.Disable();
+            playerControls.Touch.PrimaryContact.started -= StartInput;
+            playerControls.Touch.PrimaryContact.canceled -= EndInput;
+        }
+
+        private void StartInput(InputAction.CallbackContext context)
+        {
+            Vector2 position = ScreenToWorld(mainCamera, playerControls.Touch.PrimaryPosition.ReadValue<Vector2>());
+            inputHandler.HandleInputStart(position, (float)context.startTime);
+        }
+
+        private void EndInput(InputAction.CallbackContext context)
+        {
+            Vector2 position = ScreenToWorld(mainCamera, playerControls.Touch.PrimaryPosition.ReadValue<Vector2>());
+            inputHandler.HandleInputEnd(position, (float)context.time);
+        }
+
+        public void OnSwipe(SwipeType type, Vector2 direction)
+        {
+            Debug.Log($"Swipe detected: {type}, Direction: {direction}");
+        }
+
+        public static Vector3 ScreenToWorld(Camera camera, Vector3 position)
+        {
+            position.z = camera.nearClipPlane;
+            return camera.ScreenToWorldPoint(position);
+        }
     }
 }
