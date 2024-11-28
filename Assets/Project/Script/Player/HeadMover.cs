@@ -1,5 +1,6 @@
 using SGS29.Utilities;
 using UnityEngine;
+using System;
 
 namespace Grower
 {
@@ -23,12 +24,31 @@ namespace Grower
 
         #endregion
 
-        #region Private Fields
+        #region Events
 
-        private Vector3 currentDirection = Vector3.zero;
-        private Vector3 targetPosition = Vector3.zero;
-        private bool isMoving = false;
-        private bool canChangeDirection = true;
+        /// <summary>
+        /// Triggered when the character starts moving.
+        /// </summary>
+        public event Action<Vector3> OnMoveStart;
+
+        /// <summary>
+        /// Triggered when the character stops moving.
+        /// </summary>
+        public event Action OnMoveStop;
+
+        /// <summary>
+        /// Triggered when the character's direction changes.
+        /// </summary>
+        public event Action<Vector3> OnDirectionChange;
+
+        #endregion
+
+        #region Fields
+
+        public Vector3 CurrentDirection { get; private set; } = Vector3.zero;
+        public Vector3 TargetPosition { get; private set; } = Vector3.zero;
+        public bool IsMoving { get; private set; } = false;
+        public bool CanChangeDirection { get; private set; } = true;
 
         #endregion
 
@@ -41,10 +61,10 @@ namespace Grower
 
         private void FixedUpdate()
         {
-            if (isMoving)
+            if (IsMoving)
                 MoveToTarget();
 
-            if (canChangeDirection)
+            if (CanChangeDirection)
                 ProcessInput();
         }
 
@@ -73,7 +93,7 @@ namespace Grower
         /// <param name="direction">The desired direction.</param>
         private void TrySetDirection(Vector3 direction)
         {
-            if (!canChangeDirection || direction == Vector3.zero || isMoving)
+            if (!CanChangeDirection || direction == Vector3.zero || IsMoving)
                 return;
 
             Vector3 potentialTarget = AlignToGrid(transform.position + direction);
@@ -81,11 +101,17 @@ namespace Grower
             if (IsObstacleAt(potentialTarget))
                 return;
 
-            currentDirection = direction;
-            targetPosition = potentialTarget;
+            if (CurrentDirection != direction)
+            {
+                CurrentDirection = direction;
+                OnDirectionChange?.Invoke(CurrentDirection); // Trigger direction change event
+            }
 
-            isMoving = true;
-            canChangeDirection = false;
+            TargetPosition = potentialTarget;
+
+            IsMoving = true;
+            CanChangeDirection = false;
+            OnMoveStart?.Invoke(CurrentDirection); // Trigger movement start event
         }
 
         /// <summary>
@@ -93,12 +119,12 @@ namespace Grower
         /// </summary>
         private void MoveToTarget()
         {
-            transform.position = Vector3.MoveTowards(transform.position, targetPosition, moveSpeed * Time.fixedDeltaTime);
+            transform.position = Vector3.MoveTowards(transform.position, TargetPosition, moveSpeed * Time.fixedDeltaTime);
 
             if (HasReachedTarget())
             {
                 AlignToNearestGrid();
-                Vector3 nextTarget = AlignToGrid(transform.position + currentDirection);
+                Vector3 nextTarget = AlignToGrid(transform.position + CurrentDirection);
 
                 if (IsObstacleAt(nextTarget))
                 {
@@ -106,7 +132,7 @@ namespace Grower
                 }
                 else
                 {
-                    targetPosition = nextTarget;
+                    TargetPosition = nextTarget;
                 }
             }
         }
@@ -116,11 +142,13 @@ namespace Grower
         /// </summary>
         private void StopMovement()
         {
-            isMoving = false;
-            currentDirection = Vector3.zero;
+            IsMoving = false;
+            CurrentDirection = Vector3.zero;
 
             AlignToNearestGrid();
             AllowDirectionChange();
+
+            OnMoveStop?.Invoke(); // Trigger movement stop event
         }
 
         #endregion
@@ -156,9 +184,9 @@ namespace Grower
         private Vector3 AlignToGrid(Vector3 position)
         {
             position += gridOffset;
-            position.x = AlignAxis(position.x);
+            position.x = GridUtility.AlignAxis(position.x, gridSize);
             position.y = gridOffset.y; // Maintain vertical alignment
-            position.z = AlignAxis(position.z);
+            position.z = GridUtility.AlignAxis(position.z, gridSize);
             return position;
         }
 
@@ -170,32 +198,13 @@ namespace Grower
         private Vector2Int ConvertToGridCoords(Vector3 position)
         {
             position += gridOffset;
-            return new Vector2Int(AlignAxisAsInt(position.x), AlignAxisAsInt(position.z));
+            return new Vector2Int(GridUtility.AlignAxisAsInt(position.x, gridSize),
+            GridUtility.AlignAxisAsInt(position.z, gridSize));
         }
 
         #endregion
 
-        #region Utility Methods
-
-        /// <summary>
-        /// Aligns a single axis value to the grid.
-        /// </summary>
-        /// <param name="value">The value to align.</param>
-        /// <returns>The aligned value.</returns>
-        private float AlignAxis(float value)
-        {
-            return Mathf.RoundToInt(value / gridSize) * gridSize;
-        }
-
-        /// <summary>
-        /// Converts a value to grid coordinates as an integer.
-        /// </summary>
-        /// <param name="value">The value to convert.</param>
-        /// <returns>The grid-aligned integer.</returns>
-        private int AlignAxisAsInt(float value)
-        {
-            return Mathf.RoundToInt(value / gridSize);
-        }
+        #region Utility Methods 
 
         /// <summary>
         /// Checks if the object has reached the target position.
@@ -203,7 +212,7 @@ namespace Grower
         /// <returns>True if the object is at the target position, false otherwise.</returns>
         private bool HasReachedTarget()
         {
-            return Vector3.Distance(transform.position, targetPosition) <= 0.01f;
+            return Vector3.Distance(transform.position, TargetPosition) <= 0.01f;
         }
 
         /// <summary>
@@ -211,7 +220,7 @@ namespace Grower
         /// </summary>
         private void AllowDirectionChange()
         {
-            canChangeDirection = true;
+            CanChangeDirection = true;
         }
 
         #endregion

@@ -1,88 +1,99 @@
 using System.Collections.Generic;
 using UnityEngine;
-using DG.Tweening;
-using Grower;
 
-public class BodyBuilder : MonoBehaviour
+#if ODIN_INSPECTOR
+using Sirenix.OdinInspector;
+#endif
+
+namespace Grower
 {
-    [Header("References")]
-    [SerializeField] private Transform snakeHead; // Reference to the snake's head
-    [SerializeField] private Cell bodyPrefab; // Prefab of the snake's body segment
-
-    [Header("Settings")]
-    [SerializeField] private float gridSize = 1f; // Size of the grid cells
-    [SerializeField] private Vector3 spawnCellOffset; // Offset for segment spawning animation
-    [SerializeField] private float animationDuration = 0.3f; // Duration for segment animation
-
-    private Vector3 lastHeadGridPosition; // Last grid position of the head
-    private List<Vector3> bodyPositions = new List<Vector3>(); // Stores positions of all body segments
-
-    private void Start()
+    public class BodyBuilder : MonoBehaviour
     {
-        // Initialize with the head's starting position
-        lastHeadGridPosition = SnapToGrid(snakeHead.position);
-        bodyPositions.Add(lastHeadGridPosition);
-    }
+#if ODIN_INSPECTOR
+        [TitleGroup("References", "Об'єкти, які необхідні для роботи BodyBuilder", TitleAlignments.Centered)]
+        [LabelText("Snake Head"), Required, Tooltip("Посилання на голову змії")]
+#else
+        [Header("References")]
+        [Tooltip("Посилання на голову змії")]
+#endif
+        [SerializeField] private Transform snakeHead;
 
-    private void FixedUpdate()
-    {
-        Vector3 currentHeadGridPosition = SnapToGrid(snakeHead.position);
+#if ODIN_INSPECTOR
+        [LabelText("Body Prefab"), Required, Tooltip("Префаб сегменту тіла змії")]
+#endif
+        [SerializeField] private Cell bodyPrefab;
 
-        // Check if the head has moved to a new grid cell
-        if (currentHeadGridPosition != lastHeadGridPosition)
+#if ODIN_INSPECTOR
+        [TitleGroup("Settings", "Налаштування спавну та поведінки тіла", TitleAlignments.Centered)]
+        [BoxGroup("Settings/Grid Settings")]
+        [LabelText("Grid Size"), MinValue(0.1f), Tooltip("Розмір сітки для вирівнювання")]
+#else
+        [Header("Settings")]
+        [Tooltip("Розмір сітки для вирівнювання")]
+        [Min(0.1f)]
+#endif
+        [SerializeField] private float gridSize = 1f;
+
+#if ODIN_INSPECTOR
+        [BoxGroup("Settings/Grid Settings")]
+        [LabelText("Spawn Cell Offset"), Tooltip("Зміщення під час спавну сегмента")]
+#endif
+        [SerializeField] private Vector3 spawnCellOffset;
+
+#if ODIN_INSPECTOR
+        [BoxGroup("Settings/Body Settings")]
+        [LabelText("Max Body Length"), MinValue(1), Tooltip("Максимальна довжина тіла")]
+#else
+        [Min(1), Tooltip("Максимальна довжина тіла")]
+#endif
+        [SerializeField] private int maxBodyLength = 10;
+
+#if ODIN_INSPECTOR
+        [BoxGroup("Settings/Body Settings")]
+        [LabelText("Min Spawn Threshold"), MinValue(0.01f), Tooltip("Мінімальний рух для створення нового сегмента")]
+#endif
+        [SerializeField] private float minSpawnThreshold = 0.1f;
+
+        [ShowInInspector, ReadOnly, BoxGroup("Runtime Data"), Tooltip("Остання позиція, де був створений сегмент")]
+        private Vector3 lastSpawnPosition;
+
+        [ShowInInspector, ReadOnly, BoxGroup("Runtime Data"), Tooltip("Список поточних позицій тіла")]
+        private List<Vector3> bodyPositions = new List<Vector3>();
+
+        private IBodyAnimation bodyAnimation;
+
+        private void Awake()
         {
-            // Add the last head position as the next body segment's position
-            bodyPositions.Insert(0, lastHeadGridPosition);
+            bodyAnimation = new BodyAnimation();
 
-            // Spawn a new body segment at the last position
-            AnimateBodySegmentSpawn(lastHeadGridPosition);
+            // Ініціалізація першої позиції для спавну
+            lastSpawnPosition = snakeHead.position;
+            Vector3 alignedStartPos = GridUtility.AlignToGrid(lastSpawnPosition, gridSize, spawnCellOffset);
+            bodyPositions.Add(alignedStartPos);
+        }
 
-            // Update the last head position
-            lastHeadGridPosition = currentHeadGridPosition;
+        private void FixedUpdate()
+        {
+            Vector3 currentHeadPosition = snakeHead.position;
 
-            // Limit the length of the body (if necessary)
-            if (bodyPositions.Count > bodyPrefab.transform.childCount)
+            // Перевірка, чи голова змістилася хоча б на мінімальну відстань
+            if (Vector3.Distance(currentHeadPosition, lastSpawnPosition) >= minSpawnThreshold)
             {
-                bodyPositions.RemoveAt(bodyPositions.Count - 1); // Remove the oldest position
+                // Вирівнюємо останню позицію перед спавном за сіткою
+                Vector3 spawnPosition = GridUtility.AlignToGrid(lastSpawnPosition, gridSize, spawnCellOffset);
+
+                bodyPositions.Insert(0, spawnPosition);
+                bodyAnimation.AnimateBodySegmentSpawn(spawnPosition, bodyPrefab, gridSize);
+
+                // Оновлюємо останню зафіксовану позицію
+                lastSpawnPosition = currentHeadPosition;
+
+                // Видаляємо зайві сегменти, якщо їх більше, ніж дозволено
+                if (bodyPositions.Count > maxBodyLength)
+                {
+                    bodyPositions.RemoveAt(bodyPositions.Count - 1);
+                }
             }
         }
-    }
-
-    private void AnimateBodySegmentSpawn(Vector3 targetPosition)
-    {
-        // Spawn the body segment at the head's position with an offset
-        Cell segment = Instantiate(bodyPrefab, snakeHead.position + spawnCellOffset, Quaternion.identity);
-
-        // Temporarily disable its collider
-        Collider segmentCollider = segment.GetComponent<Collider>();
-        if (segmentCollider != null)
-        {
-            segmentCollider.enabled = false;
-        }
-
-        // Move the segment to the target position using DOTween
-        segment.transform.DOMove(targetPosition + spawnCellOffset, animationDuration).SetEase(Ease.OutQuad)
-            .OnComplete(() =>
-            {
-                // Delay activation of the collider by 1 second after animation ends
-                DOVirtual.DelayedCall(0.2f, () =>
-                {
-                    if (segmentCollider != null)
-                    {
-                        segmentCollider.enabled = true;
-                        segment.PushCell();
-                    }
-                });
-            });
-    }
-
-
-    private Vector3 SnapToGrid(Vector3 position)
-    {
-        return new Vector3(
-            Mathf.Round(position.x / gridSize) * gridSize,
-            Mathf.Round(position.y / gridSize) * gridSize,
-            Mathf.Round(position.z / gridSize) * gridSize
-        );
     }
 }
