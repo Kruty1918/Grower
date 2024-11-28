@@ -51,5 +51,8 @@
         "temp/": true,
         "Temp/": true
     },
-    "dotnet.defaultSolution": "Grower.sln"
+    "dotnet.defaultSolution": "Grower.sln",
+    "cSpell.words": [
+        "Scriptable"
+    ]
 }
