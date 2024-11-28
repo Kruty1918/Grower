@@ -6,6 +6,8 @@ namespace Grower
 {
     /// <summary>
     /// Controls movement on a grid with alignment to a starting offset.
+    /// The class handles moving an object in grid-based space, taking into account obstacles and grid alignment.
+    /// It provides events for movement start, stop, and direction changes.
     /// </summary>
     public class HeadMover : MonoBehaviour
     {
@@ -45,9 +47,24 @@ namespace Grower
 
         #region Fields
 
+        /// <summary>
+        /// The current movement direction of the object.
+        /// </summary>
         public Vector3 CurrentDirection { get; private set; } = Vector3.zero;
+
+        /// <summary>
+        /// The target position the object is moving towards.
+        /// </summary>
         public Vector3 TargetPosition { get; private set; } = Vector3.zero;
+
+        /// <summary>
+        /// A flag indicating whether the object is currently moving.
+        /// </summary>
         public bool IsMoving { get; private set; } = false;
+
+        /// <summary>
+        /// A flag indicating whether the direction can be changed.
+        /// </summary>
         public bool CanChangeDirection { get; private set; } = true;
 
         #endregion
@@ -74,6 +91,7 @@ namespace Grower
 
         /// <summary>
         /// Processes player input to determine the movement direction.
+        /// This method listens for WASD input and attempts to change the movement direction.
         /// </summary>
         private void ProcessInput()
         {
@@ -89,6 +107,7 @@ namespace Grower
 
         /// <summary>
         /// Attempts to set a new movement direction if possible.
+        /// Ensures the target position is valid (not blocked by obstacles) and the direction can be changed.
         /// </summary>
         /// <param name="direction">The desired direction.</param>
         private void TrySetDirection(Vector3 direction)
@@ -159,7 +178,7 @@ namespace Grower
         /// Checks if the given position is blocked by an obstacle.
         /// </summary>
         /// <param name="position">The position to check.</param>
-        /// <returns>True if an obstacle exists, false otherwise.</returns>
+        /// <returns>True if an obstacle exists at the position, false otherwise.</returns>
         private bool IsObstacleAt(Vector3 position)
         {
             Vector2Int gridCoord = ConvertToGridCoords(position);
@@ -177,7 +196,7 @@ namespace Grower
         }
 
         /// <summary>
-        /// Aligns a position to the grid with an offset.
+        /// Aligns a given position to the grid with an offset.
         /// </summary>
         /// <param name="position">The position to align.</param>
         /// <returns>The aligned position.</returns>
