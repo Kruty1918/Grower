@@ -1,136 +1,217 @@
+using SGS29.Utilities;
 using UnityEngine;
 
 namespace Grower
 {
     /// <summary>
-    /// Controls the movement of an object using Rigidbody. 
-    /// Allows direction changes and stops on collision with specific tagged objects.
+    /// Controls movement on a grid with alignment to a starting offset.
     /// </summary>
-    [RequireComponent(typeof(Rigidbody))]
     public class HeadMover : MonoBehaviour
     {
-        #region Movement Settings
-#if ODIN_INSPECTOR
-        [Sirenix.OdinInspector.Title("Movement Settings")]
-        [Sirenix.OdinInspector.Title("The speed at which the object moves.")]
-        [Range(1f, 20f)]
-#else
+        #region Serialized Fields
+
         [Header("Movement Settings")]
         [Tooltip("The speed at which the object moves.")]
         [Range(1f, 20f)]
-#endif
-        [SerializeField]
-        private float moveSpeed = 5f;
+        [SerializeField] private float moveSpeed = 5f;
+
+        [Tooltip("The size of the grid cells.")]
+        [SerializeField] private float gridSize = 1f;
+
+        [Tooltip("The starting offset for grid alignment.")]
+        [SerializeField] private Vector3 gridOffset = Vector3.zero;
+
         #endregion
 
-        #region State
-#if ODIN_INSPECTOR
-        [Sirenix.OdinInspector.Title("State")]
-        [Tooltip("Indicates if the object is currently moving.")]
-        [Sirenix.OdinInspector.ReadOnly]
-        [Sirenix.OdinInspector.ShowInInspector]
-#else
-        [Header("State")]
-        [Tooltip("Indicates if the object is currently moving.")]
-#endif
-        private bool isMoving;
+        #region Private Fields
 
-#if ODIN_INSPECTOR
-        [Tooltip("Indicates if the object can change direction.")]
-        [Sirenix.OdinInspector.ReadOnly]
-        [Sirenix.OdinInspector.ShowInInspector]
-#else
-        [Tooltip("Indicates if the object can change direction.")]
-#endif
+        private Vector3 currentDirection = Vector3.zero;
+        private Vector3 targetPosition = Vector3.zero;
+        private bool isMoving = false;
         private bool canChangeDirection = true;
+
         #endregion
 
-        private Rigidbody rb; // The Rigidbody component used for movement
-        private Vector3 currentDirection = Vector3.zero; // The current movement direction
+        #region Unity Lifecycle
 
         private void Awake()
         {
-            rb = GetComponent<Rigidbody>();
+            AlignToNearestGrid(); // Ensure alignment on startup
         }
 
         private void FixedUpdate()
         {
-            // Apply velocity based on movement state
-            rb.velocity = isMoving ? currentDirection * moveSpeed : Vector3.zero;
+            if (isMoving)
+                MoveToTarget();
 
-            // Handle directional input when allowed
             if (canChangeDirection)
-                HandleInput();
+                ProcessInput();
         }
 
+        #endregion
+
+        #region Movement Logic
+
         /// <summary>
-        /// Processes input to determine movement direction.
+        /// Processes player input to determine the movement direction.
         /// </summary>
-        private void HandleInput()
+        private void ProcessInput()
         {
             if (Input.GetKey(KeyCode.W))
-                SetDirection(Vector3.forward);
+                TrySetDirection(Vector3.forward);
             else if (Input.GetKey(KeyCode.S))
-                SetDirection(Vector3.back);
+                TrySetDirection(Vector3.back);
             else if (Input.GetKey(KeyCode.A))
-                SetDirection(Vector3.left);
+                TrySetDirection(Vector3.left);
             else if (Input.GetKey(KeyCode.D))
-                SetDirection(Vector3.right);
+                TrySetDirection(Vector3.right);
         }
 
         /// <summary>
-        /// Sets the current movement direction if allowed.
+        /// Attempts to set a new movement direction if possible.
         /// </summary>
-        /// <param name="direction">The new movement direction.</param>
-        private void SetDirection(Vector3 direction)
+        /// <param name="direction">The desired direction.</param>
+        private void TrySetDirection(Vector3 direction)
         {
-            if (!canChangeDirection || direction == Vector3.zero)
+            if (!canChangeDirection || direction == Vector3.zero || isMoving)
                 return;
 
-            currentDirection = direction.normalized;
+            Vector3 potentialTarget = AlignToGrid(transform.position + direction);
+
+            if (IsObstacleAt(potentialTarget))
+                return;
+
+            currentDirection = direction;
+            targetPosition = potentialTarget;
+
             isMoving = true;
             canChangeDirection = false;
         }
 
-        private void OnCollisionEnter(Collision collision)
+        /// <summary>
+        /// Moves the object towards the target position.
+        /// </summary>
+        private void MoveToTarget()
         {
-            if (collision.gameObject.CompareTag("Wall"))
+            transform.position = Vector3.MoveTowards(transform.position, targetPosition, moveSpeed * Time.fixedDeltaTime);
+
+            if (HasReachedTarget())
             {
-                StopMovement();
+                AlignToNearestGrid();
+                Vector3 nextTarget = AlignToGrid(transform.position + currentDirection);
+
+                if (IsObstacleAt(nextTarget))
+                {
+                    StopMovement();
+                }
+                else
+                {
+                    targetPosition = nextTarget;
+                }
             }
         }
 
         /// <summary>
-        /// Stops all movement and resets the state.
+        /// Stops all movement and resets the current direction.
         /// </summary>
         private void StopMovement()
         {
             isMoving = false;
             currentDirection = Vector3.zero;
-            rb.velocity = Vector3.zero;
-            rb.angularVelocity = Vector3.zero;
 
-            // Allow direction change after a brief delay
-            Invoke(nameof(AllowDirectionChange), 0.1f);
+            AlignToNearestGrid();
+            AllowDirectionChange();
+        }
+
+        #endregion
+
+        #region Grid Alignment and Collision
+
+        /// <summary>
+        /// Checks if the given position is blocked by an obstacle.
+        /// </summary>
+        /// <param name="position">The position to check.</param>
+        /// <returns>True if an obstacle exists, false otherwise.</returns>
+        private bool IsObstacleAt(Vector3 position)
+        {
+            Vector2Int gridCoord = ConvertToGridCoords(position);
+            Cell cell = SM.Instance<Grid>().GetCell(gridCoord);
+
+            return cell != null && (cell.CellType == CellType.Wall || cell.CellType == CellType.Body);
         }
 
         /// <summary>
-        /// Allows direction changes after stopping.
+        /// Aligns the object's position to the nearest grid point.
+        /// </summary>
+        private void AlignToNearestGrid()
+        {
+            transform.position = AlignToGrid(transform.position);
+        }
+
+        /// <summary>
+        /// Aligns a position to the grid with an offset.
+        /// </summary>
+        /// <param name="position">The position to align.</param>
+        /// <returns>The aligned position.</returns>
+        private Vector3 AlignToGrid(Vector3 position)
+        {
+            position += gridOffset;
+            position.x = AlignAxis(position.x);
+            position.y = gridOffset.y; // Maintain vertical alignment
+            position.z = AlignAxis(position.z);
+            return position;
+        }
+
+        /// <summary>
+        /// Converts a world position to grid coordinates.
+        /// </summary>
+        /// <param name="position">The position to convert.</param>
+        /// <returns>The grid coordinates.</returns>
+        private Vector2Int ConvertToGridCoords(Vector3 position)
+        {
+            position += gridOffset;
+            return new Vector2Int(AlignAxisAsInt(position.x), AlignAxisAsInt(position.z));
+        }
+
+        #endregion
+
+        #region Utility Methods
+
+        /// <summary>
+        /// Aligns a single axis value to the grid.
+        /// </summary>
+        /// <param name="value">The value to align.</param>
+        /// <returns>The aligned value.</returns>
+        private float AlignAxis(float value)
+        {
+            return Mathf.RoundToInt(value / gridSize) * gridSize;
+        }
+
+        /// <summary>
+        /// Converts a value to grid coordinates as an integer.
+        /// </summary>
+        /// <param name="value">The value to convert.</param>
+        /// <returns>The grid-aligned integer.</returns>
+        private int AlignAxisAsInt(float value)
+        {
+            return Mathf.RoundToInt(value / gridSize);
+        }
+
+        /// <summary>
+        /// Checks if the object has reached the target position.
+        /// </summary>
+        /// <returns>True if the object is at the target position, false otherwise.</returns>
+        private bool HasReachedTarget()
+        {
+            return Vector3.Distance(transform.position, targetPosition) <= 0.01f;
+        }
+
+        /// <summary>
+        /// Allows direction changes after movement stops.
         /// </summary>
         private void AllowDirectionChange()
         {
             canChangeDirection = true;
-        }
-
-        #region Debug and Runtime Controls (Optional)
-#if ODIN_INSPECTOR
-        [Sirenix.OdinInspector.Button("Stop Movement")]
-#else
-        [ContextMenu("Stop Movement")]
-#endif
-        private void DebugStopMovement()
-        {
-            StopMovement();
         }
 
         #endregion
