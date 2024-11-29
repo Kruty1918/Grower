@@ -12,8 +12,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 163f9508cefd16941b9721eecceac0bc, type: 3}
   m_Name: New Generation Settings
   m_EditorClassIdentifier: 
-  mapSize: 10
+  mapSize: 5
   generationType: 1
   validator: {fileID: 11400000, guid: 4278b43b3aac8944ea864d8e9ee6268d, type: 2}
   cellPrefabs:
   - {fileID: -8139569026681263298, guid: e559738589aee32488d22e51d4241d40, type: 3}
+  offset: {x: 0, y: 0}
+  centerMap: 1

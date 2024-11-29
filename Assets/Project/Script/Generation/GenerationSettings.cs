@@ -12,5 +12,8 @@ namespace Grower
 
         [SerializeField] private List<Cell> cellPrefabs;
         public List<Cell> CellsPrefabs { get => cellPrefabs; protected set { cellPrefabs = value; } }
+
+        public Vector2Int offset = Vector2Int.zero; // Offset for map generation
+        public bool centerMap = true; // Center the map around the origin
     }
 }
