@@ -1,17 +1,7 @@
-using System.Collections.Generic;
-using SGS29.Utilities;
 using UnityEngine;
-using UnityEngine.Events;
-using static Grower.LevelResult;
 
 namespace Grower
 {
-    public static class GrowerEvents
-    {
-        public static UnityEvent<LevelResult> OnLevelEnd = new UnityEvent<LevelResult>();
-        public static UnityEvent<CollisionData> OnHeadCollision = new UnityEvent<CollisionData>();
-    }
-
     /// <summary>
     /// Клас, що зберігає результати завершення рівня гри.
     /// </summary>
