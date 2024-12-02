@@ -4,13 +4,14 @@ namespace Grower
 {
     public abstract class InputHandler
     {
-        event System.Action<SwipeType, Vector2> OnSwipe;
+        event System.Action<CardinalDirection, Vector2> OnSwipe;
         public abstract void HandleInputStart(Vector2 position, float time);
         public abstract void HandleInputEnd(Vector2 position, float time);
     }
 
-    public enum SwipeType
+    public enum CardinalDirection
     {
+        None,
         Up,
         Down,
         Left,
@@ -19,7 +20,7 @@ namespace Grower
 
     public interface ISwipeListener
     {
-        void OnSwipe(SwipeType type, Vector2 direction);
+        void OnSwipe(CardinalDirection type, Vector2 direction);
     }
 
 }

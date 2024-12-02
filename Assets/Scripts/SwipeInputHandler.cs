@@ -10,7 +10,7 @@ namespace Grower
         private Vector2 startPosition;
         private float startTime;
 
-        public event System.Action<SwipeType, Vector2> OnSwipe;
+        public event System.Action<CardinalDirection, Vector2> OnSwipe;
 
         public SwipeInputHandler(float minDist, float maxTime, float dirThreshold)
         {
@@ -44,14 +44,34 @@ namespace Grower
 
         private void DetectSwipeDirection(Vector2 direction)
         {
+            // Дебаг для перевірки значень
+            Debug.Log($"Swipe direction: {direction}");
+
+            // Покращена перевірка напрямку за допомогою порогу
             if (Vector2.Dot(Vector2.up, direction) > directionThreshold)
-                OnSwipe?.Invoke(SwipeType.Up, direction);
+            {
+                Debug.Log("Up swipe detected");
+                OnSwipe?.Invoke(CardinalDirection.Up, direction);
+            }
             else if (Vector2.Dot(Vector2.down, direction) > directionThreshold)
-                OnSwipe?.Invoke(SwipeType.Down, direction);
+            {
+                Debug.Log("Down swipe detected");
+                OnSwipe?.Invoke(CardinalDirection.Down, direction);
+            }
             else if (Vector2.Dot(Vector2.left, direction) > directionThreshold)
-                OnSwipe?.Invoke(SwipeType.Left, direction);
+            {
+                Debug.Log("Left swipe detected");
+                OnSwipe?.Invoke(CardinalDirection.Left, direction);
+            }
             else if (Vector2.Dot(Vector2.right, direction) > directionThreshold)
-                OnSwipe?.Invoke(SwipeType.Right, direction);
+            {
+                Debug.Log("Right swipe detected");
+                OnSwipe?.Invoke(CardinalDirection.Right, direction);
+            }
+            else
+            {
+                Debug.Log("No significant swipe detected");
+            }
         }
     }
 }
