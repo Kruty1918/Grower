@@ -3,61 +3,78 @@ using UnityEngine.InputSystem;
 
 namespace Grower
 {
-    public class InputManager : MonoBehaviour, ISwipeListener
+    public interface IInputProcessor
     {
-        private PlayerControls playerControls;
-        private Camera mainCamera;
+        Vector2 GetInputDirection();
+    }
 
-        private InputHandler inputHandler;
+    public class InputManager : MonoBehaviour
+    {
+        private IInputProcessor inputProcessor;
+        private PlayerControls playerControls;
 
         private void Awake()
         {
             playerControls = new PlayerControls();
-            mainCamera = Camera.main;
 
-            // Ініціалізуємо SwipeInputHandler через InputHandler
-            inputHandler = new SwipeInputHandler(0.2f, 1f, 0.9f);
-            if (inputHandler is SwipeInputHandler swipeInputHandler)
+            // Вибір обробника введення залежно від платформи або середовища
+#if UNITY_EDITOR
+            inputProcessor = new KeyboardInputProcessor();
+#elif UNITY_ANDROID || UNITY_IOS || UNITY_EDITOR && UNITY_SIMULATOR
+            inputProcessor = new SwipeInputProcessor(0.2f, 1f, 0.9f);
+#else
+            inputProcessor = new KeyboardInputProcessor();
+#endif
+        }
+
+        private void Update()
+        {
+            Vector2 direction = inputProcessor.GetInputDirection();
+            if (direction != Vector2.zero)
             {
-                swipeInputHandler.OnSwipe += OnSwipe;
+                Debug.Log($"Input direction: {direction}");
+                HandleMovement(direction);
             }
         }
 
-        private void OnEnable()
+        private void HandleMovement(Vector2 direction)
         {
-            playerControls.Enable();
-            playerControls.Touch.PrimaryContact.started += StartInput;
-            playerControls.Touch.PrimaryContact.canceled += EndInput;
+            // Обробка руху або іншої дії
+        }
+    }
+
+    public class KeyboardInputProcessor : IInputProcessor
+    {
+        public Vector2 GetInputDirection()
+        {
+            float x = 0;
+            if (Keyboard.current.aKey.isPressed) x -= 1;
+            if (Keyboard.current.dKey.isPressed) x += 1;
+
+            float y = 0;
+            if (Keyboard.current.wKey.isPressed) y += 1;
+            if (Keyboard.current.sKey.isPressed) y -= 1;
+
+            return new Vector2(x, y).normalized;
+        }
+    }
+
+    public class SwipeInputProcessor : IInputProcessor
+    {
+        private readonly SwipeInputHandler swipeHandler;
+        private Vector2 lastDirection;
+
+        public SwipeInputProcessor(float minDist, float maxTime, float dirThreshold)
+        {
+            swipeHandler = new SwipeInputHandler(minDist, maxTime, dirThreshold);
+            swipeHandler.OnSwipe += (type, direction) => lastDirection = direction;
         }
 
-        private void OnDisable()
+        public Vector2 GetInputDirection()
         {
-            playerControls.Disable();
-            playerControls.Touch.PrimaryContact.started -= StartInput;
-            playerControls.Touch.PrimaryContact.canceled -= EndInput;
-        }
-
-        private void StartInput(InputAction.CallbackContext context)
-        {
-            Vector2 position = ScreenToWorld(mainCamera, playerControls.Touch.PrimaryPosition.ReadValue<Vector2>());
-            inputHandler.HandleInputStart(position, (float)context.startTime);
-        }
-
-        private void EndInput(InputAction.CallbackContext context)
-        {
-            Vector2 position = ScreenToWorld(mainCamera, playerControls.Touch.PrimaryPosition.ReadValue<Vector2>());
-            inputHandler.HandleInputEnd(position, (float)context.time);
-        }
-
-        public void OnSwipe(SwipeType type, Vector2 direction)
-        {
-            Debug.Log($"Swipe detected: {type}, Direction: {direction}");
-        }
-
-        public static Vector3 ScreenToWorld(Camera camera, Vector3 position)
-        {
-            position.z = camera.nearClipPlane;
-            return camera.ScreenToWorldPoint(position);
+            Vector2 direction = lastDirection;
+            lastDirection = Vector2.zero; // Скидаємо після використання
+            return direction;
         }
     }
 }

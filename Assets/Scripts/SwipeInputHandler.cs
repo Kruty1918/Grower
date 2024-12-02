@@ -54,5 +54,4 @@ namespace Grower
                 OnSwipe?.Invoke(SwipeType.Right, direction);
         }
     }
-
 }
