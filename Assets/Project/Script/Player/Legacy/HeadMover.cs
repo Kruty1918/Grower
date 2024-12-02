@@ -1,6 +1,8 @@
 using SGS29.Utilities;
 using UnityEngine;
 using System;
+using System.Collections.Generic;
+using static Grower.LevelResult;
 
 namespace Grower
 {
@@ -18,11 +20,14 @@ namespace Grower
         [Range(1f, 20f)]
         [SerializeField] private float moveSpeed = 5f;
 
+        [SerializeField] private float objectMass = 1.0f;
+
         [Tooltip("The size of the grid cells.")]
         [SerializeField] private float gridSize = 1f;
 
         [Tooltip("The starting offset for grid alignment.")]
         [SerializeField] private Vector3 gridOffset = Vector3.zero;
+        [SerializeField] private LevelValidator levelValidator;
 
         #endregion
 
@@ -42,6 +47,12 @@ namespace Grower
         /// Triggered when the character's direction changes.
         /// </summary>
         public event Action<Vector3> OnDirectionChange;
+
+        /// <summary>
+        /// Triggered when the level is completed (no more moves possible).
+        /// </summary>
+        public event Action OnLevelComplete;
+
 
         #endregion
 
@@ -67,6 +78,23 @@ namespace Grower
         /// </summary>
         public bool CanChangeDirection { get; private set; } = true;
 
+        public List<Vector2Int> movementPathTracker { get; private set; } = new List<Vector2Int>();
+
+        public float ObjectMass { get { return objectMass; } }
+
+        public float movementStartTime { get; private set; }
+        public float totalMovementTime { get; private set; }
+
+        /// <summary>
+        /// Поточна швидкість об'єкта.
+        /// </summary>
+        public float CurrentSpeed { get; private set; }
+
+        /// <summary>
+        /// Позиція в попередньому кадрі для обчислення швидкості.
+        /// </summary>
+        private Vector3 previousPosition;
+
         #endregion
 
         #region Unity Lifecycle
@@ -79,10 +107,31 @@ namespace Grower
         private void FixedUpdate()
         {
             if (IsMoving)
+            {
                 MoveToTarget();
+                CalculateSpeed();
+            }
 
             if (CanChangeDirection)
                 ProcessInput();
+        }
+
+        private void OnEnable()
+        {
+            var headMover = GetComponent<HeadMover>();
+            if (headMover != null)
+            {
+                headMover.OnLevelComplete += HandleLevelComplete;
+            }
+        }
+
+        private void OnDisable()
+        {
+            var headMover = GetComponent<HeadMover>();
+            if (headMover != null)
+            {
+                headMover.OnLevelComplete -= HandleLevelComplete;
+            }
         }
 
         #endregion
@@ -130,6 +179,10 @@ namespace Grower
 
             IsMoving = true;
             CanChangeDirection = false;
+
+            // Фіксуємо час початку руху
+            movementStartTime = Time.time;
+
             OnMoveStart?.Invoke(CurrentDirection); // Trigger movement start event
         }
 
@@ -143,10 +196,19 @@ namespace Grower
             if (HasReachedTarget())
             {
                 AlignToNearestGrid();
+                Vector2Int currentGridCoord = ConvertToGridCoords(transform.position);
+
+                // Додавання поточної позиції до трекера шляху, якщо це нова клітинка
+                if (movementPathTracker.Count == 0 || movementPathTracker[^1] != currentGridCoord)
+                {
+                    movementPathTracker.Add(currentGridCoord);
+                }
+
                 Vector3 nextTarget = AlignToGrid(transform.position + CurrentDirection);
 
                 if (IsObstacleAt(nextTarget))
                 {
+                    CollisionEnter();
                     StopMovement();
                 }
                 else
@@ -156,19 +218,99 @@ namespace Grower
             }
         }
 
+        private void CollisionEnter()
+        {
+            Vector3 nextTarget = AlignToGrid(transform.position + CurrentDirection);
+            Vector2Int headCoordinates = ConvertToGridCoords(transform.position);
+            Vector2Int objectCoordinates = ConvertToGridCoords(nextTarget);
+
+            // Визначення сили удару
+            float speedBeforeCollision = CurrentSpeed;
+            float speedAfterCollision = 0;
+            float collisionTime = Time.fixedDeltaTime;
+
+            float collisionForce = CalculateCollisionForce(objectMass, speedBeforeCollision - speedAfterCollision, collisionTime);
+
+            // Визначення сторони зіткнення
+            CollisionSide side = DetermineCollisionSide(headCoordinates, objectCoordinates);
+
+            // Отримання об'єкта клітинки, з яким сталося зіткнення
+            Cell collidedObject = SM.Instance<Grid>().GetCell(objectCoordinates);
+
+            // Створення даних про зіткнення
+            CollisionData data = new CollisionData(
+                headCoordinates,
+                objectCoordinates,
+                collisionForce,
+                side,
+                collidedObject
+            );
+
+            // Виклик події зіткнення
+            GrowerEvents.OnHeadCollision?.Invoke(data);
+        }
+
+
+        private float CalculateCollisionForce(float mass, float deltaSpeed, float time)
+        {
+            // F = m * (deltaSpeed / time), де deltaSpeed - зміна швидкості
+            return mass * (deltaSpeed / time);
+        }
+
+        private CollisionSide DetermineCollisionSide(Vector2Int headCoordinates, Vector2Int objectCoordinates)
+        {
+            Vector2Int delta = objectCoordinates - headCoordinates;
+
+            if (delta == Vector2Int.up)    // Зіткнення з об'єкта зверху
+                return CollisionSide.Top;
+            else if (delta == Vector2Int.down) // Зіткнення з об'єкта знизу
+                return CollisionSide.Bottom;
+            else if (delta == Vector2Int.left) // Зіткнення з об'єкта зліва
+                return CollisionSide.Left;
+            else if (delta == Vector2Int.right) // Зіткнення з об'єкта справа
+                return CollisionSide.Right;
+
+            Debug.LogWarning($"Unexpected delta: {delta}. Returning default CollisionSide.");
+            return CollisionSide.Top; // Значення за замовчуванням
+        }
+
+
+        /// <summary>
+        /// Обчислює поточну швидкість об'єкта на основі пройденої відстані.
+        /// </summary>
+        private void CalculateSpeed()
+        {
+            float distanceMoved = Vector3.Distance(transform.position, previousPosition);
+            CurrentSpeed = distanceMoved / Time.fixedDeltaTime;
+
+            // Оновлення попередньої позиції
+            previousPosition = transform.position;
+        }
+
         /// <summary>
         /// Stops all movement and resets the current direction.
         /// </summary>
         private void StopMovement()
         {
             IsMoving = false;
+
+            // Вимірювання загального часу руху
+            totalMovementTime += Time.time - movementStartTime;
+
             CurrentDirection = Vector3.zero;
 
             AlignToNearestGrid();
             AllowDirectionChange();
 
             OnMoveStop?.Invoke(); // Trigger movement stop event
+
+            // Check if the level is complete
+            if (!HasValidMoves())
+            {
+                OnLevelComplete?.Invoke(); // Trigger level complete event
+            }
         }
+
 
         #endregion
 
@@ -224,6 +366,49 @@ namespace Grower
         #endregion
 
         #region Utility Methods 
+
+        private void HandleLevelComplete()
+        {
+            // Збір даних для LevelResult
+            int sceneBuildIndex = UnityEngine.SceneManagement.SceneManager.GetActiveScene().buildIndex;
+            int levelIndex = 1; // Замініть на актуальний рівень або отримайте його з відповідного джерела
+            Vector2Int lastCellCoord = ConvertToGridCoords(transform.position); // Остання позиція
+            float passageTime = totalMovementTime; // Використовуємо сумарний час руху
+            List<Vector2Int> movementPath = movementPathTracker; // Логіка збереження має бути додана
+
+            // Створення результату рівня
+            LevelResult result = new LevelResult(
+                sceneBuildIndex,
+                levelIndex,
+                lastCellCoord,
+                passageTime,
+                movementPath.Count,
+levelValidator
+            );
+
+            // Виклик події
+            GrowerEvents.OnLevelEnd.Invoke(result);
+        }
+
+
+        /// <summary>
+        /// Checks if there are any valid directions left for movement.
+        /// </summary>
+        /// <returns>True if there are valid directions, false otherwise.</returns>
+        private bool HasValidMoves()
+        {
+            Vector3[] directions = { Vector3.forward, Vector3.back, Vector3.left, Vector3.right };
+
+            foreach (var direction in directions)
+            {
+                Vector3 potentialTarget = AlignToGrid(transform.position + direction);
+
+                if (!IsObstacleAt(potentialTarget))
+                    return true;
+            }
+
+            return false;
+        }
 
         /// <summary>
         /// Checks if the object has reached the target position.

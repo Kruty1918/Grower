@@ -90,6 +90,15 @@ namespace Grower
         #region CellData Management
 
         /// <summary>
+        /// Retrieves a list of coordinates for all cells in the grid.
+        /// </summary>
+        /// <returns>A list of <see cref="Vector2Int"/> representing the coordinates of all cells in the grid.</returns>
+        public List<Vector2Int> GetAllCellCoordinates()
+        {
+            return new List<Vector2Int>(data.Keys);
+        }
+
+        /// <summary>
         /// Retrieves the data associated with the cell at the specified coordinates.
         /// </summary>
         /// <param name="cellCoord">The coordinates of the cell whose data is to be retrieved.</param>
@@ -159,6 +168,18 @@ namespace Grower
                 return cell.GetComponent<CellData>(); // Return the cell's data
             }
             return null;
+        }
+
+        public List<Cell> GetCellsByType(CellType cellType)
+        {
+            List<Cell> cellsByType = new List<Cell>();
+
+            foreach (var cell in cells)
+            {
+                if (cell.CellType == cellType) cellsByType.Add(cell);
+            }
+
+            return cellsByType;
         }
 
         #endregion
