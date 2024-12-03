@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Grower
+namespace Grower.Extensions
 {
     public static class Vector2Extensions
     {

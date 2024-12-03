@@ -44,28 +44,21 @@ namespace Grower
 
         private void DetectSwipeDirection(Vector2 direction)
         {
-            // Дебаг для перевірки значень
-            Debug.Log($"Swipe direction: {direction}");
-
             // Покращена перевірка напрямку за допомогою порогу
             if (Vector2.Dot(Vector2.up, direction) > directionThreshold)
             {
-                Debug.Log("Up swipe detected");
                 OnSwipe?.Invoke(CardinalDirection.Up, direction);
             }
             else if (Vector2.Dot(Vector2.down, direction) > directionThreshold)
             {
-                Debug.Log("Down swipe detected");
                 OnSwipe?.Invoke(CardinalDirection.Down, direction);
             }
             else if (Vector2.Dot(Vector2.left, direction) > directionThreshold)
             {
-                Debug.Log("Left swipe detected");
                 OnSwipe?.Invoke(CardinalDirection.Left, direction);
             }
             else if (Vector2.Dot(Vector2.right, direction) > directionThreshold)
             {
-                Debug.Log("Right swipe detected");
                 OnSwipe?.Invoke(CardinalDirection.Right, direction);
             }
             else
