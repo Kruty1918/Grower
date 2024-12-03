@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "com.simplegamestudio29.monosingleton": "https://github.com/Kruty1918/Unity-MonoSingleton-System.git",
     "com.unity.cinemachine": "2.10.3",
     "com.unity.collab-proxy": "2.5.2",
     "com.unity.feature.development": "1.0.1",
