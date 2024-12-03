@@ -3,29 +3,48 @@ using UnityEngine;
 
 namespace Grower
 {
-    public interface IInputListener
-    {
-        void OnSwipe(Vector2 direction);
-    }
-
+    /// <summary>
+    /// The InputManager class handles user input based on the assigned input strategy
+    /// and notifies subscribed listeners about input events.
+    /// </summary>
     public class InputManager : MonoBehaviour
     {
-        [SerializeField] private InputStrategy inputStrategy;
+        #region Fields
+
+        [SerializeField]
+        [Tooltip("Input strategy to define the source of input.")]
+        private InputStrategy inputStrategy;
 
         private IInputProcessor inputProcessor;
         private List<IInputListener> listeners = new List<IInputListener>();
 
+        #endregion
+
+        #region Public Methods
+
+        /// <summary>
+        /// Adds a listener to the list of subscribers.
+        /// </summary>
+        /// <param name="listener">Listener implementing the IInputListener interface.</param>
         public void AddListener(IInputListener listener)
         {
             if (!listeners.Contains(listener))
                 listeners.Add(listener);
         }
 
+        /// <summary>
+        /// Removes a listener from the list of subscribers.
+        /// </summary>
+        /// <param name="listener">Listener implementing the IInputListener interface.</param>
         public void RemoveListener(IInputListener listener)
         {
             if (listeners.Contains(listener))
                 listeners.Remove(listener);
         }
+
+        #endregion
+
+        #region Unity Lifecycle
 
         private void Awake()
         {
@@ -50,6 +69,14 @@ namespace Grower
             }
         }
 
+        #endregion
+
+        #region Private Methods
+
+        /// <summary>
+        /// Notifies all subscribed listeners about the input direction.
+        /// </summary>
+        /// <param name="direction">Direction vector of the input.</param>
         private void InvokeInput(Vector2 direction)
         {
             foreach (var listener in listeners)
@@ -57,5 +84,7 @@ namespace Grower
                 listener.OnSwipe(direction);
             }
         }
+
+        #endregion
     }
 }

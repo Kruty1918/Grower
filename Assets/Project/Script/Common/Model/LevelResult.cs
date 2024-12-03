@@ -3,18 +3,52 @@ using UnityEngine;
 namespace Grower
 {
     /// <summary>
-    /// Клас, що зберігає результати завершення рівня гри.
+    /// Class that stores the results of completing a level in the game.
+    /// This class contains data about the scene, level, coordinates of the last cell,
+    /// the passage time, and level completion status.
     /// </summary>
     [System.Serializable]
     public class LevelResult
     {
+        /// <summary>
+        /// The scene's build index in the game.
+        /// </summary>
         [SerializeField] public int SceneBuildIndex;
+
+        /// <summary>
+        /// The index of the level.
+        /// </summary>
         [SerializeField] public int LevelIndex;
+
+        /// <summary>
+        /// The coordinates of the last cell in the game.
+        /// </summary>
         [SerializeField] public Vector2Int LastCellCoord;
+
+        /// <summary>
+        /// The time taken to complete the level.
+        /// </summary>
         [SerializeField] public float PassageTime;
+
+        /// <summary>
+        /// Whether the level was successfully completed.
+        /// </summary>
         [SerializeField] public bool LevelComplete;
+
+        /// <summary>
+        /// The level validator object used to check level completion.
+        /// </summary>
         public LevelValidator levelValidator;
 
+        /// <summary>
+        /// Constructor to initialize the level result.
+        /// </summary>
+        /// <param name="sceneBuildIndex">The scene's build index in the game.</param>
+        /// <param name="levelIndex">The index of the level.</param>
+        /// <param name="lastCellCoord">The coordinates of the last cell in the game.</param>
+        /// <param name="passageTime">The time taken to complete the level.</param>
+        /// <param name="fillCell">The number of filled cells.</param>
+        /// <param name="levelValidator">The level validator object used to check level completion.</param>
         public LevelResult(int sceneBuildIndex, int levelIndex, Vector2Int lastCellCoord, float passageTime, int fillCell, LevelValidator levelValidator)
         {
             SceneBuildIndex = sceneBuildIndex;
@@ -22,50 +56,10 @@ namespace Grower
             LastCellCoord = lastCellCoord;
             PassageTime = passageTime;
 
+            // Calls the method to check if the level is complete
             LevelComplete = levelValidator.LevelComplete(fillCell);
 
             Debug.Log($"Level Complete: {levelValidator.LevelComplete(fillCell)}");
-        }
-
-        /// <summary>
-        /// Represents data about a collision between the snake's head and another object.
-        /// </summary>
-        [System.Serializable]
-        public class CollisionData
-        {
-            [SerializeField] public Vector2Int HeadCoordinates;
-            [SerializeField] public Vector2Int ObjectCoordinates;
-            [SerializeField] public float CollisionForce;
-            [SerializeField] public CollisionSide Side;
-            [SerializeField] public Cell CollidedObject;
-
-            /// <summary>
-            /// Initializes a new instance of the <see cref="CollisionData"/> class.
-            /// </summary>
-            /// <param name="headCoordinates">Coordinates of the snake's head.</param>
-            /// <param name="objectCoordinates">Coordinates of the collided object.</param>
-            /// <param name="collisionForce">The force of the collision.</param>
-            /// <param name="side">The side of the object that was collided with.</param>
-            /// <param name="collidedObject">The collided object.</param>
-            public CollisionData(Vector2Int headCoordinates, Vector2Int objectCoordinates, float collisionForce, CollisionSide side, Cell collidedObject)
-            {
-                HeadCoordinates = headCoordinates;
-                ObjectCoordinates = objectCoordinates;
-                CollisionForce = collisionForce;
-                Side = side;
-                CollidedObject = collidedObject;
-            }
-        }
-
-        /// <summary>
-        /// Represents the side of an object where the collision occurred.
-        /// </summary>
-        public enum CollisionSide
-        {
-            Top,
-            Bottom,
-            Left,
-            Right
         }
     }
 }
