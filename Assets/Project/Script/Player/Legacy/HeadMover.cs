@@ -10,7 +10,7 @@ namespace Grower
     /// The class handles moving an object in grid-based space, taking into account obstacles and grid alignment.
     /// It provides events for movement start, stop, and direction changes.
     /// </summary>
-    public class HeadMover : MonoBehaviour
+    public class HeadMover : MonoBehaviour, IInputListener
     {
         #region Serialized Fields
 
@@ -141,6 +141,11 @@ namespace Grower
             AlignToNearestGrid(); // Ensure alignment on startup
         }
 
+        private void Start()
+        {
+            SM.Instance<InputManager>().AddListener(this);
+        }
+
         /// <summary>
         /// Called on every fixed frame. Moves the object towards the target if it's moving, and calculates its speed.
         /// Also processes input if the direction can be changed.
@@ -152,9 +157,6 @@ namespace Grower
                 MoveToTarget();
                 CalculateSpeed();
             }
-
-            if (CanChangeDirection)
-                ProcessInput();
         }
 
         /// <summary>
@@ -178,6 +180,9 @@ namespace Grower
             if (headMover != null)
             {
                 headMover.OnLevelComplete -= HandleLevelComplete;
+
+                if (SM.HasSingleton<InputManager>())
+                    SM.Instance<InputManager>().RemoveListener(this);
             }
         }
 
@@ -185,20 +190,10 @@ namespace Grower
 
         #region Movement Logic
 
-        /// <summary>
-        /// Processes player input to determine the movement direction.
-        /// This method listens for WASD input and attempts to change the movement direction.
-        /// </summary>
-        private void ProcessInput()
+        public void OnSwipe(Vector2 direction)
         {
-            if (Input.GetKey(KeyCode.W))
-                TrySetDirection(Vector3.forward);
-            else if (Input.GetKey(KeyCode.S))
-                TrySetDirection(Vector3.back);
-            else if (Input.GetKey(KeyCode.A))
-                TrySetDirection(Vector3.left);
-            else if (Input.GetKey(KeyCode.D))
-                TrySetDirection(Vector3.right);
+            if (CanChangeDirection)
+                TrySetDirection(direction);
         }
 
         /// <summary>
@@ -210,6 +205,9 @@ namespace Grower
         {
             if (!CanChangeDirection || direction == Vector3.zero || IsMoving)
                 return;
+
+            if (direction.y != 0)
+                direction = new Vector3(direction.x, 0, direction.y);
 
             Vector3 potentialTarget = AlignToGrid(transform.position + direction);
 

@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using SGS29.Utilities;
 using UnityEngine;
 
 namespace Grower
@@ -7,7 +8,7 @@ namespace Grower
     /// The InputManager class handles user input based on the assigned input strategy
     /// and notifies subscribed listeners about input events.
     /// </summary>
-    public class InputManager : MonoBehaviour
+    public class InputManager : MonoSingleton<InputManager>
     {
         #region Fields
 
@@ -46,8 +47,10 @@ namespace Grower
 
         #region Unity Lifecycle
 
-        private void Awake()
+        protected override void Awake()
         {
+            base.Awake();
+
             if (inputStrategy != null)
             {
                 inputProcessor = inputStrategy.GetInputProcessor();
