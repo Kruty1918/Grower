@@ -15,36 +15,10 @@ namespace Grower
         #region Serialized Fields
 
         [Header("Movement Settings")]
-
-        /// <summary>
-        /// The speed at which the object moves.
-        /// This value determines how fast the object moves across the grid.
-        /// </summary>
-        [Tooltip("The speed at which the object moves.")]
-        [Range(1f, 20f)]
-        [SerializeField] private float moveSpeed = 5f;
-
-        /// <summary>
-        /// The mass of the object, which affects its collision behavior.
-        /// A higher value results in a more significant impact force during collisions.
-        /// </summary>
         [Tooltip("The mass of the object.")]
-        [SerializeField] private float objectMass = 1.0f;
+        [SerializeField] private MovementStrategyBase movementStrategy;
 
-        /// <summary>
-        /// The size of the grid cells, which determines the grid's resolution.
-        /// This value should match the grid's cell size for proper alignment.
-        /// </summary>
-        [Tooltip("The size of the grid cells.")]
-        [SerializeField] private float gridSize = 1f;
-
-        /// <summary>
-        /// The starting offset for grid alignment.
-        /// This value offsets the starting position to ensure proper grid alignment.
-        /// </summary>
-        [Tooltip("The starting offset for grid alignment.")]
-        [SerializeField] private Vector3 gridOffset = Vector3.zero;
-
+        [SerializeField] private MoverSettings settings;
         /// <summary>
         /// A reference to the LevelValidator that checks the level's state and conditions.
         /// </summary>
@@ -107,7 +81,7 @@ namespace Grower
         /// <summary>
         /// The mass of the object. Used for physics calculations.
         /// </summary>
-        public float ObjectMass { get { return objectMass; } }
+        public MoverSettings Settings { get { return settings; } }
 
         /// <summary>
         /// The time when the movement started.
@@ -129,6 +103,8 @@ namespace Grower
         /// </summary>
         private Vector3 previousPosition;
 
+        private ResultBuilder resultBuilder;
+
         #endregion
 
         #region Unity Lifecycle
@@ -144,6 +120,8 @@ namespace Grower
         private void Start()
         {
             SM.Instance<InputManager>().AddListener(this);
+
+            resultBuilder = new ResultBuilder(this, levelValidator);
         }
 
         /// <summary>
@@ -197,38 +175,75 @@ namespace Grower
         }
 
         /// <summary>
-        /// Attempts to set a new movement direction if possible.
-        /// Ensures the target position is valid (not blocked by obstacles) and the direction can be changed.
+        /// Публічний метод для спроби встановити новий напрямок.
         /// </summary>
-        /// <param name="direction">The desired direction.</param>
+        /// <param name="direction">Бажаний напрямок.</param>
         private void TrySetDirection(Vector3 direction)
         {
-            if (!CanChangeDirection || direction == Vector3.zero || IsMoving)
+            if (!CanAttemptDirectionChange(direction))
                 return;
 
+            Vector3 potentialTarget = CalculateTargetPosition(direction);
+
+            if (!IsValidTargetPosition(potentialTarget))
+                return;
+
+            UpdateDirectionAndStartMovement(direction, potentialTarget);
+        }
+
+        /// <summary>
+        /// Перевіряє, чи можна спробувати змінити напрямок.
+        /// </summary>
+        /// <param name="direction">Бажаний напрямок.</param>
+        /// <returns>True, якщо зміна напрямку можлива.</returns>
+        private bool CanAttemptDirectionChange(Vector3 direction)
+        {
+            return CanChangeDirection && direction != Vector3.zero && !IsMoving;
+        }
+
+        /// <summary>
+        /// Обчислює нову цільову позицію на основі бажаного напрямку.
+        /// </summary>
+        /// <param name="direction">Бажаний напрямок.</param>
+        /// <returns>Вирівняна до сітки цільова позиція.</returns>
+        private Vector3 CalculateTargetPosition(Vector3 direction)
+        {
             if (direction.y != 0)
                 direction = new Vector3(direction.x, 0, direction.y);
 
-            Vector3 potentialTarget = AlignToGrid(transform.position + direction);
+            return Utility.AlignToGrid(transform.position + direction, settings);
+        }
 
-            if (IsObstacleAt(potentialTarget))
-                return;
+        /// <summary>
+        /// Перевіряє, чи є цільова позиція допустимою (без перешкод).
+        /// </summary>
+        /// <param name="targetPosition">Цільова позиція.</param>
+        /// <returns>True, якщо позиція допустима.</returns>
+        private bool IsValidTargetPosition(Vector3 targetPosition)
+        {
+            return !IsObstacleAt(targetPosition);
+        }
 
+        /// <summary>
+        /// Оновлює поточний напрямок і починає рух до нової позиції.
+        /// </summary>
+        /// <param name="direction">Новий напрямок.</param>
+        /// <param name="targetPosition">Цільова позиція.</param>
+        private void UpdateDirectionAndStartMovement(Vector3 direction, Vector3 targetPosition)
+        {
             if (CurrentDirection != direction)
             {
                 CurrentDirection = direction;
-                OnDirectionChange?.Invoke(CurrentDirection); // Trigger direction change event
+                OnDirectionChange?.Invoke(CurrentDirection);
             }
 
-            TargetPosition = potentialTarget;
+            TargetPosition = targetPosition;
 
             IsMoving = true;
             CanChangeDirection = false;
 
-            // Record the movement start time
             movementStartTime = Time.time;
-
-            OnMoveStart?.Invoke(CurrentDirection); // Trigger movement start event
+            OnMoveStart?.Invoke(CurrentDirection);
         }
 
         /// <summary>
@@ -236,12 +251,12 @@ namespace Grower
         /// </summary>
         private void MoveToTarget()
         {
-            transform.position = Vector3.MoveTowards(transform.position, TargetPosition, moveSpeed * Time.fixedDeltaTime);
+            movementStrategy.Move(transform, TargetPosition);
 
             if (HasReachedTarget())
             {
                 AlignToNearestGrid();
-                Vector2Int currentGridCoord = ConvertToGridCoords(transform.position);
+                Vector2Int currentGridCoord = Utility.ConvertToGridCoords(transform.position, settings);
 
                 // Add the current position to the movement path tracker if it's a new grid cell
                 if (movementPathTracker.Count == 0 || movementPathTracker[^1] != currentGridCoord)
@@ -249,7 +264,7 @@ namespace Grower
                     movementPathTracker.Add(currentGridCoord);
                 }
 
-                Vector3 nextTarget = AlignToGrid(transform.position + CurrentDirection);
+                Vector3 nextTarget = Utility.AlignToGrid(transform.position + CurrentDirection, settings);
 
                 if (IsObstacleAt(nextTarget))
                 {
@@ -269,16 +284,16 @@ namespace Grower
         /// </summary>
         private void CollisionEnter()
         {
-            Vector3 nextTarget = AlignToGrid(transform.position + CurrentDirection);
-            Vector2Int headCoordinates = ConvertToGridCoords(transform.position);
-            Vector2Int objectCoordinates = ConvertToGridCoords(nextTarget);
+            Vector3 nextTarget = Utility.AlignToGrid(transform.position + CurrentDirection, settings);
+            Vector2Int headCoordinates = Utility.ConvertToGridCoords(transform.position, settings);
+            Vector2Int objectCoordinates = Utility.ConvertToGridCoords(nextTarget, settings);
 
             // Calculate collision force
             float speedBeforeCollision = CurrentSpeed;
             float speedAfterCollision = 0;
             float collisionTime = Time.fixedDeltaTime;
 
-            float collisionForce = CalculateCollisionForce(objectMass, speedBeforeCollision - speedAfterCollision, collisionTime);
+            float collisionForce = CalculateCollisionForce(settings.objectMass, speedBeforeCollision - speedAfterCollision, collisionTime);
 
             // Determine the collision side
             CollisionSide side = DetermineCollisionSide(headCoordinates, objectCoordinates);
@@ -382,7 +397,7 @@ namespace Grower
         /// <returns>True if an obstacle exists at the position, false otherwise.</returns>
         private bool IsObstacleAt(Vector3 position)
         {
-            Vector2Int gridCoord = ConvertToGridCoords(position);
+            Vector2Int gridCoord = Utility.ConvertToGridCoords(position, settings);
             Cell cell = SM.Instance<Grid>().GetCell(gridCoord);
 
             return cell != null && (cell.CellType == CellType.Wall || cell.CellType == CellType.Body);
@@ -393,33 +408,7 @@ namespace Grower
         /// </summary>
         private void AlignToNearestGrid()
         {
-            transform.position = AlignToGrid(transform.position);
-        }
-
-        /// <summary>
-        /// Aligns a given position to the grid with an offset.
-        /// </summary>
-        /// <param name="position">The position to align.</param>
-        /// <returns>The aligned position.</returns>
-        private Vector3 AlignToGrid(Vector3 position)
-        {
-            position += gridOffset;
-            position.x = GridUtility.AlignAxis(position.x, gridSize);
-            position.y = gridOffset.y; // Maintain vertical alignment
-            position.z = GridUtility.AlignAxis(position.z, gridSize);
-            return position;
-        }
-
-        /// <summary>
-        /// Converts a world position to grid coordinates.
-        /// </summary>
-        /// <param name="position">The position to convert.</param>
-        /// <returns>The grid coordinates.</returns>
-        private Vector2Int ConvertToGridCoords(Vector3 position)
-        {
-            position += gridOffset;
-            return new Vector2Int(GridUtility.AlignAxisAsInt(position.x, gridSize),
-            GridUtility.AlignAxisAsInt(position.z, gridSize));
+            transform.position = Utility.AlignToGrid(transform.position, settings);
         }
 
         #endregion
@@ -433,25 +422,8 @@ namespace Grower
         /// </summary>
         private void HandleLevelComplete()
         {
-            // Collecting data for LevelResult
-            int sceneBuildIndex = UnityEngine.SceneManagement.SceneManager.GetActiveScene().buildIndex;  // Current scene index
-            int levelIndex = 1; // Replace this with the actual level index or retrieve it from the appropriate source
-            Vector2Int lastCellCoord = ConvertToGridCoords(transform.position);  // The last position of the player on the grid
-            float passageTime = totalMovementTime;  // The total movement time spent in the level
-            List<Vector2Int> movementPath = new List<Vector2Int>(movementPathTracker);  // Copy the movement path
-
-            // Create the level result object
-            LevelResult result = new LevelResult(
-                sceneBuildIndex,
-                levelIndex,
-                lastCellCoord,
-                passageTime,
-                movementPath.Count,  // Number of movements
-                levelValidator // This needs to be defined or replaced with the actual validation logic
-            );
-
             // Trigger the level end event with the result data
-            GrowerEvents.OnLevelEnd?.Invoke(result);
+            GrowerEvents.OnLevelEnd?.Invoke(resultBuilder.LevelResultBuild());
         }
 
         /// <summary>
@@ -464,7 +436,7 @@ namespace Grower
 
             foreach (var direction in directions)
             {
-                Vector3 potentialTarget = AlignToGrid(transform.position + direction);
+                Vector3 potentialTarget = Utility.AlignToGrid(transform.position + direction, settings);
 
                 if (!IsObstacleAt(potentialTarget))
                     return true;
@@ -491,5 +463,39 @@ namespace Grower
         }
 
         #endregion
+    }
+
+    public class ResultBuilder
+    {
+        private readonly HeadMover headMover;
+        private readonly LevelValidator levelValidator;
+
+        public ResultBuilder(HeadMover headMover, LevelValidator levelValidator)
+        {
+            this.headMover = headMover;
+            this.levelValidator = levelValidator;
+        }
+
+        public LevelResult LevelResultBuild()
+        {
+            // Collecting data for LevelResult
+            int sceneBuildIndex = UnityEngine.SceneManagement.SceneManager.GetActiveScene().buildIndex;  // Current scene index
+            int levelIndex = 1; // Replace this with the actual level index or retrieve it from the appropriate source
+            Vector2Int lastCellCoord = Utility.ConvertToGridCoords(headMover.transform.position, headMover.Settings);  // The last position of the player on the grid
+            float passageTime = headMover.totalMovementTime;  // The total movement time spent in the level
+            List<Vector2Int> movementPath = new List<Vector2Int>(headMover.movementPathTracker);  // Copy the movement path
+
+            // Create the level result object
+            LevelResult result = new LevelResult(
+                sceneBuildIndex,
+                levelIndex,
+                lastCellCoord,
+                passageTime,
+                movementPath.Count,  // Number of movements
+                levelValidator // This needs to be defined or replaced with the actual validation logic
+            );
+
+            return result;
+        }
     }
 }
