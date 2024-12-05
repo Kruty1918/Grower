@@ -137,6 +137,16 @@ namespace Grower
             }
         }
 
+        private void CalculateSpeed()
+        {
+            float distanceMoved = Vector3.Distance(transform.position, previousPosition);
+            CurrentSpeed = distanceMoved / Time.fixedDeltaTime;
+
+            // Оновіть попередню позицію
+            previousPosition = transform.position;
+        }
+
+
         /// <summary>
         /// Called when the object is enabled. Subscribes to the OnLevelComplete event of the HeadMover component.
         /// </summary>
@@ -166,18 +176,28 @@ namespace Grower
 
         #endregion
 
-        #region Movement Logic
+        #region Swipe Handling
 
         public void OnSwipe(Vector2 direction)
         {
+            direction = GetPrimaryDirection(direction);
+            Vector3 nDirection = new Vector3(direction.x, 0, direction.y);
+
             if (CanChangeDirection)
-                TrySetDirection(direction);
+                TrySetDirection(nDirection);
         }
 
-        /// <summary>
-        /// Публічний метод для спроби встановити новий напрямок.
-        /// </summary>
-        /// <param name="direction">Бажаний напрямок.</param>
+        private Vector2 GetPrimaryDirection(Vector2 direction)
+        {
+            return Mathf.Abs(direction.x) > Mathf.Abs(direction.y)
+                ? new Vector2(direction.x, 0)
+                : new Vector2(0, direction.y);
+        }
+
+        #endregion
+
+        #region Direction Setting
+
         private void TrySetDirection(Vector3 direction)
         {
             if (!CanAttemptDirectionChange(direction))
@@ -185,205 +205,159 @@ namespace Grower
 
             Vector3 potentialTarget = CalculateTargetPosition(direction);
 
-            if (!IsValidTargetPosition(potentialTarget))
-                return;
-
-            UpdateDirectionAndStartMovement(direction, potentialTarget);
+            if (IsValidTargetPosition(potentialTarget))
+                UpdateDirectionAndStartMovement(direction, potentialTarget);
         }
 
-        /// <summary>
-        /// Перевіряє, чи можна спробувати змінити напрямок.
-        /// </summary>
-        /// <param name="direction">Бажаний напрямок.</param>
-        /// <returns>True, якщо зміна напрямку можлива.</returns>
         private bool CanAttemptDirectionChange(Vector3 direction)
         {
             return CanChangeDirection && direction != Vector3.zero && !IsMoving;
         }
 
-        /// <summary>
-        /// Обчислює нову цільову позицію на основі бажаного напрямку.
-        /// </summary>
-        /// <param name="direction">Бажаний напрямок.</param>
-        /// <returns>Вирівняна до сітки цільова позиція.</returns>
         private Vector3 CalculateTargetPosition(Vector3 direction)
         {
-            if (direction.y != 0)
-                direction = new Vector3(direction.x, 0, direction.y);
-
             return Utility.AlignToGrid(transform.position + direction, settings);
         }
 
-        /// <summary>
-        /// Перевіряє, чи є цільова позиція допустимою (без перешкод).
-        /// </summary>
-        /// <param name="targetPosition">Цільова позиція.</param>
-        /// <returns>True, якщо позиція допустима.</returns>
         private bool IsValidTargetPosition(Vector3 targetPosition)
         {
             return !IsObstacleAt(targetPosition);
         }
 
-        /// <summary>
-        /// Оновлює поточний напрямок і починає рух до нової позиції.
-        /// </summary>
-        /// <param name="direction">Новий напрямок.</param>
-        /// <param name="targetPosition">Цільова позиція.</param>
         private void UpdateDirectionAndStartMovement(Vector3 direction, Vector3 targetPosition)
+        {
+            SetNewDirection(direction);
+            SetMovementTarget(targetPosition);
+        }
+
+        private void SetNewDirection(Vector3 direction)
         {
             if (CurrentDirection != direction)
             {
                 CurrentDirection = direction;
                 OnDirectionChange?.Invoke(CurrentDirection);
             }
+        }
 
+        private void SetMovementTarget(Vector3 targetPosition)
+        {
             TargetPosition = targetPosition;
-
             IsMoving = true;
             CanChangeDirection = false;
-
             movementStartTime = Time.time;
             OnMoveStart?.Invoke(CurrentDirection);
         }
 
-        /// <summary>
-        /// Moves the object towards the target position.
-        /// </summary>
+        #endregion
+
+        #region Movement Logic
+
         private void MoveToTarget()
         {
             movementStrategy.Move(transform, TargetPosition);
 
             if (HasReachedTarget())
+                HandleTargetReached();
+        }
+
+        private void HandleTargetReached()
+        {
+            AlignToNearestGrid();
+            TrackMovementPath();
+
+            Vector3 nextTarget = Utility.AlignToGrid(transform.position + CurrentDirection, settings);
+
+            if (IsObstacleAt(nextTarget))
             {
-                AlignToNearestGrid();
-                Vector2Int currentGridCoord = Utility.ConvertToGridCoords(transform.position, settings);
-
-                // Add the current position to the movement path tracker if it's a new grid cell
-                if (movementPathTracker.Count == 0 || movementPathTracker[^1] != currentGridCoord)
-                {
-                    movementPathTracker.Add(currentGridCoord);
-                }
-
-                Vector3 nextTarget = Utility.AlignToGrid(transform.position + CurrentDirection, settings);
-
-                if (IsObstacleAt(nextTarget))
-                {
-                    CollisionEnter();
-                    StopMovement();
-                }
-                else
-                {
-                    TargetPosition = nextTarget;
-                }
+                CollisionEnter();
+                StopMovement();
+            }
+            else
+            {
+                TargetPosition = nextTarget;
             }
         }
 
-        /// <summary>
-        /// Handles the logic when a collision occurs.
-        /// This method calculates the collision force, determines the collision side, and triggers the collision event.
-        /// </summary>
+        private void TrackMovementPath()
+        {
+            Vector2Int currentGridCoord = Utility.ConvertToGridCoords(transform.position, settings);
+
+            if (movementPathTracker.Count == 0 || movementPathTracker[^1] != currentGridCoord)
+            {
+                movementPathTracker.Add(currentGridCoord);
+            }
+        }
+
+        #endregion
+
+        #region Collision Handling
+
         private void CollisionEnter()
+        {
+            CollisionData data = PrepareCollisionData();
+            GrowerEvents.OnHeadCollision?.Invoke(data);
+        }
+
+        private CollisionData PrepareCollisionData()
         {
             Vector3 nextTarget = Utility.AlignToGrid(transform.position + CurrentDirection, settings);
             Vector2Int headCoordinates = Utility.ConvertToGridCoords(transform.position, settings);
             Vector2Int objectCoordinates = Utility.ConvertToGridCoords(nextTarget, settings);
 
-            // Calculate collision force
-            float speedBeforeCollision = CurrentSpeed;
-            float speedAfterCollision = 0;
-            float collisionTime = Time.fixedDeltaTime;
-
-            float collisionForce = CalculateCollisionForce(settings.objectMass, speedBeforeCollision - speedAfterCollision, collisionTime);
-
-            // Determine the collision side
+            float collisionForce = CalculateCollisionForce(settings.objectMass, CurrentSpeed, Time.fixedDeltaTime);
             CollisionSide side = DetermineCollisionSide(headCoordinates, objectCoordinates);
-
-            // Get the collided object cell
             Cell collidedObject = SM.Instance<Grid>().GetCell(objectCoordinates);
 
-            // Create collision data
-            CollisionData data = new CollisionData(
+            return new CollisionData(
                 headCoordinates,
                 objectCoordinates,
                 collisionForce,
                 side,
-                collidedObject
-            );
-
-            // Trigger collision event
-            GrowerEvents.OnHeadCollision?.Invoke(data);
+                collidedObject);
         }
 
-        /// <summary>
-        /// Calculates the collision force based on the mass, change in speed, and time.
-        /// </summary>
-        /// <param name="mass">The mass of the object.</param>
-        /// <param name="deltaSpeed">The change in speed during the collision.</param>
-        /// <param name="time">The time over which the collision occurred.</param>
-        /// <returns>The calculated collision force.</returns>
-        private float CalculateCollisionForce(float mass, float deltaSpeed, float time)
+        private float CalculateCollisionForce(float mass, float speedBeforeCollision, float time)
         {
-            // F = m * (deltaSpeed / time), where deltaSpeed is the change in speed
-            return mass * (deltaSpeed / time);
+            return mass * (speedBeforeCollision / time);
         }
 
-        /// <summary>
-        /// Determines the side of the collision based on the relative positions of the object and the head.
-        /// </summary>
-        /// <param name="headCoordinates">The coordinates of the head.</param>
-        /// <param name="objectCoordinates">The coordinates of the collided object.</param>
-        /// <returns>The side of the collision.</returns>
         private CollisionSide DetermineCollisionSide(Vector2Int headCoordinates, Vector2Int objectCoordinates)
         {
             Vector2Int delta = objectCoordinates - headCoordinates;
 
-            if (delta == Vector2Int.up)    // Collision from the top
-                return CollisionSide.Top;
-            else if (delta == Vector2Int.down) // Collision from the bottom
-                return CollisionSide.Bottom;
-            else if (delta == Vector2Int.left) // Collision from the left
-                return CollisionSide.Left;
-            else if (delta == Vector2Int.right) // Collision from the right
-                return CollisionSide.Right;
-
-            Debug.LogWarning($"Unexpected delta: {delta}. Returning default CollisionSide.");
-            return CollisionSide.Top; // Default value
+            return delta switch
+            {
+                { y: 1 } => CollisionSide.Top,
+                { y: -1 } => CollisionSide.Bottom,
+                { x: -1 } => CollisionSide.Left,
+                { x: 1 } => CollisionSide.Right,
+                _ => CollisionSide.Top
+            };
         }
 
-        /// <summary>
-        /// Calculates the current speed of the object based on the distance traveled.
-        /// </summary>
-        private void CalculateSpeed()
-        {
-            float distanceMoved = Vector3.Distance(transform.position, previousPosition);
-            CurrentSpeed = distanceMoved / Time.fixedDeltaTime;
+        #endregion
 
-            // Update the previous position
-            previousPosition = transform.position;
-        }
+        #region Movement Stop Logic
 
-        /// <summary>
-        /// Stops all movement and resets the current direction.
-        /// </summary>
         private void StopMovement()
         {
             IsMoving = false;
-
-            // Record the total movement time
             totalMovementTime += Time.time - movementStartTime;
 
-            CurrentDirection = Vector3.zero;
-
+            ResetDirection();
             AlignToNearestGrid();
             AllowDirectionChange();
+            OnMoveStop?.Invoke();
 
-            OnMoveStop?.Invoke(); // Trigger movement stop event
-
-            // Check if the level is complete
             if (!HasValidMoves())
             {
-                OnLevelComplete?.Invoke(); // Trigger level complete event
+                OnLevelComplete?.Invoke();
             }
+        }
+
+        private void ResetDirection()
+        {
+            CurrentDirection = Vector3.zero;
         }
 
         #endregion
@@ -463,39 +437,5 @@ namespace Grower
         }
 
         #endregion
-    }
-
-    public class ResultBuilder
-    {
-        private readonly HeadMover headMover;
-        private readonly LevelValidator levelValidator;
-
-        public ResultBuilder(HeadMover headMover, LevelValidator levelValidator)
-        {
-            this.headMover = headMover;
-            this.levelValidator = levelValidator;
-        }
-
-        public LevelResult LevelResultBuild()
-        {
-            // Collecting data for LevelResult
-            int sceneBuildIndex = UnityEngine.SceneManagement.SceneManager.GetActiveScene().buildIndex;  // Current scene index
-            int levelIndex = 1; // Replace this with the actual level index or retrieve it from the appropriate source
-            Vector2Int lastCellCoord = Utility.ConvertToGridCoords(headMover.transform.position, headMover.Settings);  // The last position of the player on the grid
-            float passageTime = headMover.totalMovementTime;  // The total movement time spent in the level
-            List<Vector2Int> movementPath = new List<Vector2Int>(headMover.movementPathTracker);  // Copy the movement path
-
-            // Create the level result object
-            LevelResult result = new LevelResult(
-                sceneBuildIndex,
-                levelIndex,
-                lastCellCoord,
-                passageTime,
-                movementPath.Count,  // Number of movements
-                levelValidator // This needs to be defined or replaced with the actual validation logic
-            );
-
-            return result;
-        }
     }
 }

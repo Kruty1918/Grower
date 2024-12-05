@@ -474,6 +474,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: InputManager
       objectReference: {fileID: 0}
+    - target: {fileID: 5088829399993381001, guid: 3c1e422d80185634eb0f104df57bbe94, type: 3}
+      propertyPath: inputStrategy
+      value: 
+      objectReference: {fileID: 11400000, guid: d34e87aca3bc4b84dae7fd5cb4909547, type: 2}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
