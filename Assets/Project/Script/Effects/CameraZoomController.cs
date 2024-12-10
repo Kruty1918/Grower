@@ -7,17 +7,26 @@ namespace Grower
     /// </summary>
     public class CameraZoomController : MonoBehaviour
     {
-        [SerializeField] private Camera targetCamera; // Камера, размер которой нужно изменять
-        [SerializeField] private HeadMover headMover; // Ссылка на объект HeadMover
-        [SerializeField] private float zoomSpeed = 1f; // Скорость изменения размера камеры
-        [SerializeField] private float maxSize = 6f;   // Максимальный размер камеры
-        [SerializeField] private float defaultSize = 4f; // Исходный размер камеры
+        [SerializeField, Tooltip("The camera to be zoomed.")]
+        private Camera targetCamera;
 
-        private bool isZoomingOut = false; // Флаг для управления увеличением камеры
+        [SerializeField, Tooltip("Reference to the HeadMover component controlling player movement.")]
+        private HeadMover headMover;
+
+        [SerializeField, Tooltip("Speed of camera size adjustment.")]
+        private float zoomSpeed = 1f;
+
+        [SerializeField, Tooltip("Maximum camera size when zooming out.")]
+        private float maxSize = 6f;
+
+        [SerializeField, Tooltip("Default camera size when not zooming out.")]
+        private float defaultSize = 4f;
+
+        private bool isZoomingOut = false; // Flag to control zoom-out state
 
         private void Awake()
         {
-            // Проверяем наличие ссылок
+            // Validate required references
             if (targetCamera == null)
                 Debug.LogError("CameraZoomController: Target camera is not assigned.");
             if (headMover == null)
@@ -26,7 +35,7 @@ namespace Grower
 
         private void Update()
         {
-            // Проверяем состояние движения
+            // Check if the player is moving
             if (headMover != null && headMover.IsMoving)
             {
                 isZoomingOut = true;
@@ -36,10 +45,13 @@ namespace Grower
                 isZoomingOut = false;
             }
 
-            // Изменяем размер камеры
+            // Adjust the camera size accordingly
             AdjustCameraSize();
         }
 
+        /// <summary>
+        /// Adjusts the size of the camera based on the zoom state.
+        /// </summary>
         private void AdjustCameraSize()
         {
             if (targetCamera == null || !targetCamera.orthographic)
@@ -47,12 +59,12 @@ namespace Grower
 
             if (isZoomingOut)
             {
-                // Увеличиваем размер камеры
+                // Smoothly increase the camera size
                 targetCamera.orthographicSize = Mathf.Lerp(targetCamera.orthographicSize, maxSize, zoomSpeed * Time.deltaTime);
             }
             else
             {
-                // Возвращаем размер камеры к исходному
+                // Smoothly return the camera size to the default
                 targetCamera.orthographicSize = Mathf.Lerp(targetCamera.orthographicSize, defaultSize, zoomSpeed * Time.deltaTime);
             }
         }
