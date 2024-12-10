@@ -10,7 +10,7 @@ GameObject:
   m_Component:
   - component: {fileID: 2491183760252927085}
   - component: {fileID: 8425865522241143737}
-  - component: {fileID: -2511370707678396901}
+  - component: {fileID: 4062010934347413007}
   m_Layer: 0
   m_Name: Directional Light
   m_TagString: Untagged
@@ -95,7 +95,7 @@ Light:
   m_UseViewFrustumForShadowCasterCull: 1
   m_ShadowRadius: 0
   m_ShadowAngle: 0
---- !u!114 &-2511370707678396901
+--- !u!114 &4062010934347413007
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}

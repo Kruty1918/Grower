@@ -1,10 +1,13 @@
 {
   "dependencies": {
-    "com.unity.2d.sprite": {
-      "version": "1.0.0",
+
+    "com.simplegamestudio29.monosingleton": {
+      "version": "https://github.com/Kruty1918/Unity-MonoSingleton-System.git",
       "depth": 0,
-      "source": "builtin",
-      "dependencies": {}
+      "source": "git",
+      "dependencies": {},
+      "hash": "8e0f599c2fecc7d487199af453b8699ae369cbac"
+
     },
     "com.unity.burst": {
       "version": "1.8.18",
@@ -83,6 +86,15 @@
       "depth": 1,
       "source": "registry",
       "dependencies": {},
+      "url": "https://packages.unity.com"
+    },
+    "com.unity.inputsystem": {
+      "version": "1.11.2",
+      "depth": 0,
+      "source": "registry",
+      "dependencies": {
+        "com.unity.modules.uielements": "1.0.0"
+      },
       "url": "https://packages.unity.com"
     },
     "com.unity.mathematics": {
