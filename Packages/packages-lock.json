@@ -1,11 +1,13 @@
 {
   "dependencies": {
+
     "com.simplegamestudio29.monosingleton": {
       "version": "https://github.com/Kruty1918/Unity-MonoSingleton-System.git",
       "depth": 0,
       "source": "git",
       "dependencies": {},
       "hash": "8e0f599c2fecc7d487199af453b8699ae369cbac"
+
     },
     "com.unity.burst": {
       "version": "1.8.18",
