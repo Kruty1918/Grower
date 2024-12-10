@@ -9,9 +9,10 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 6184073c2abd03b498379a4dbe661d25, type: 3}
-  m_Name: MoverSettings
+  m_Script: {fileID: 11500000, guid: cae047e34db609f4b8815e638d509def, type: 3}
+  m_Name: AcceleratedMovement
   m_EditorClassIdentifier: 
-  objectMass: 1
-  gridSize: 1
-  gridOffset: {x: 0, y: -0.25, z: 0}
+  moveSpeed: 5
+  maxSpeed: 5
+  accelerationTime: 1
+  decelerationTime: 1
