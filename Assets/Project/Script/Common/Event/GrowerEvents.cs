@@ -20,5 +20,9 @@ namespace Grower
         /// The event provides collision data, including force and the side of the collision.
         /// </summary>
         public static UnityEvent<CollisionData> OnHeadCollision = new UnityEvent<CollisionData>();
+
+        public static UnityEvent<GameStateType> OnGameStateChange = new UnityEvent<GameStateType>();
+
+        public static UnityEvent OnStartGame = new UnityEvent();
     }
 }

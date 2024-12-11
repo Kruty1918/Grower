@@ -5,6 +5,108 @@ using System.Collections.Generic;
 
 namespace Grower
 {
+    public abstract class MoverBase : MonoBehaviour
+    {
+        #region Events
+
+        public event Action<Vector3> OnMoveStart;
+        public event Action OnMoveStop;
+        public event Action<Vector3> OnDirectionChange;
+        public event Action OnLevelComplete;
+
+        #endregion
+
+        #region Fields
+
+        public Vector3 CurrentDirection { get; protected set; } = Vector3.zero;
+        public Vector3 TargetPosition { get; protected set; } = Vector3.zero;
+        public bool IsMoving { get; protected set; } = false;
+        public bool CanChangeDirection { get; protected set; } = true;
+
+        protected Vector3 previousPosition;
+        protected float movementStartTime;
+        protected float totalMovementTime;
+
+        #endregion
+
+        #region Unity Lifecycle
+
+        protected virtual void Start()
+        {
+            previousPosition = transform.position;
+        }
+
+        protected virtual void FixedUpdate()
+        {
+            if (IsMoving)
+            {
+                MoveToTarget();
+                CalculateSpeed();
+            }
+        }
+
+        #endregion
+
+        #region Movement Logic
+
+        protected abstract void MoveToTarget();
+
+        protected void CalculateSpeed()
+        {
+            float distanceMoved = Vector3.Distance(transform.position, previousPosition);
+            float currentSpeed = distanceMoved / Time.fixedDeltaTime;
+            previousPosition = transform.position;
+        }
+
+        protected void StopMovement()
+        {
+            IsMoving = false;
+            totalMovementTime += Time.time - movementStartTime;
+            ResetDirection();
+            OnMoveStop?.Invoke();
+        }
+
+        protected void ResetDirection()
+        {
+            CurrentDirection = Vector3.zero;
+        }
+
+        protected void UpdateDirectionAndStartMovement(Vector3 direction, Vector3 targetPosition)
+        {
+            SetNewDirection(direction);
+            SetMovementTarget(targetPosition);
+        }
+
+        protected void SetNewDirection(Vector3 direction)
+        {
+            if (CurrentDirection != direction)
+            {
+                CurrentDirection = direction;
+                OnDirectionChange?.Invoke(CurrentDirection);
+            }
+        }
+
+        protected void SetMovementTarget(Vector3 targetPosition)
+        {
+            TargetPosition = targetPosition;
+            IsMoving = true;
+            CanChangeDirection = false;
+            movementStartTime = Time.time;
+            OnMoveStart?.Invoke(CurrentDirection);
+        }
+
+        #endregion
+
+        #region Grid Alignment
+
+        protected void AlignToNearestGrid()
+        {
+            transform.position = Utility.AlignToGrid(transform.position, null); // Or use specific settings if needed
+        }
+
+        #endregion
+    }
+
     /// <summary>
     /// Controls movement on a grid with alignment to a starting offset.
     /// The class handles moving an object in grid-based space, taking into account obstacles and grid alignment.
@@ -68,6 +170,8 @@ namespace Grower
         /// </summary>
         public bool IsMoving { get; private set; } = false;
 
+        public bool CanMove { get; private set; } = false;
+
         /// <summary>
         /// A flag indicating whether the direction can be changed.
         /// </summary>
@@ -130,7 +234,7 @@ namespace Grower
         /// </summary>
         private void FixedUpdate()
         {
-            if (IsMoving)
+            if (IsMoving && CanMove)
             {
                 MoveToTarget();
                 CalculateSpeed();
@@ -151,11 +255,8 @@ namespace Grower
         /// </summary>
         private void OnEnable()
         {
-            var headMover = GetComponent<HeadMover>();
-            if (headMover != null)
-            {
-                headMover.OnLevelComplete += HandleLevelComplete;
-            }
+            OnLevelComplete += HandleLevelComplete;
+            GrowerEvents.OnGameStateChange.AddListener(OnGameStateChange);
         }
 
         /// <summary>
@@ -163,14 +264,11 @@ namespace Grower
         /// </summary>
         private void OnDisable()
         {
-            var headMover = GetComponent<HeadMover>();
-            if (headMover != null)
-            {
-                headMover.OnLevelComplete -= HandleLevelComplete;
+            OnLevelComplete -= HandleLevelComplete;
+            GrowerEvents.OnGameStateChange.RemoveListener(OnGameStateChange);
 
-                if (SM.HasSingleton<InputManager>())
-                    SM.Instance<InputManager>().RemoveListener(this);
-            }
+            if (SM.HasSingleton<InputManager>())
+                SM.Instance<InputManager>().RemoveListener(this);
         }
 
         #endregion
@@ -179,6 +277,8 @@ namespace Grower
 
         public void OnSwipe(Vector2 direction)
         {
+            if (!CanMove) return;
+
             direction = GetPrimaryDirection(direction);
             Vector3 nDirection = new Vector3(direction.x, 0, direction.y);
 
@@ -387,6 +487,24 @@ namespace Grower
         #endregion
 
         #region Utility Methods 
+
+        private void OnGameStateChange(GameStateType state)
+        {
+            switch (state)
+            {
+                case GameStateType.Playing:
+                    CanMove = true;
+                    break;
+                case GameStateType.MainMenu:
+                    CanMove = false;
+                    break;
+                case GameStateType.ReloadingScene:
+                    CanMove = false;
+                    break;
+
+                    // Додати більше відслідковування станів за потреби 
+            }
+        }
 
         /// <summary>
         /// Handles the completion of the level by collecting relevant data and triggering the level end event.

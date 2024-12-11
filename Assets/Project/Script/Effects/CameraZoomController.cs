@@ -36,7 +36,7 @@ namespace Grower
         private void Update()
         {
             // Check if the player is moving
-            if (headMover != null && headMover.IsMoving)
+            if (headMover != null && headMover.IsMoving && headMover.CanMove)
             {
                 isZoomingOut = true;
             }
