@@ -142,7 +142,6 @@ namespace Grower
             float distanceMoved = Vector3.Distance(transform.position, previousPosition);
             CurrentSpeed = distanceMoved / Time.fixedDeltaTime;
 
-            // Оновіть попередню позицію
             previousPosition = transform.position;
         }
 

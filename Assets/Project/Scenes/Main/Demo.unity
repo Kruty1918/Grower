@@ -1616,14 +1616,27 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c7509dbcc09df7844b210dc6fc77618b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  cameraImpulseStrength: 0.1
-  cameraImpulseDuration: 0.1
-  cameraReturnSpeed: 10
+  movementStrategy: {fileID: 11400000, guid: 1dc2fc9be933f194799f662a0e59c1e3, type: 2}
+  originalCameraPosition: {x: 0, y: 0, z: 0}
+  isCameraInImpulse: 0
+  mainCamera: {fileID: 963194235}
 --- !u!20 &963194235 stripped
 Camera:
   m_CorrespondingSourceObject: {fileID: 5494317088169856298, guid: e856a996b678947429cccef18982d501, type: 3}
   m_PrefabInstance: {fileID: 4628258658315271827}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &963194238
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 963194225}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 320b60b8b432fe24489ace26acc59f5e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1001 &1039367944
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -3144,6 +3157,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 1083364345868796292, guid: e856a996b678947429cccef18982d501, type: 3}
       insertIndex: -1
       addedObject: {fileID: 963194233}
+    - targetCorrespondingSourceObject: {fileID: 1083364345868796292, guid: e856a996b678947429cccef18982d501, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 963194238}
   m_SourcePrefab: {fileID: 100100000, guid: e856a996b678947429cccef18982d501, type: 3}
 --- !u!1001 &4707110558016117333
 PrefabInstance:
