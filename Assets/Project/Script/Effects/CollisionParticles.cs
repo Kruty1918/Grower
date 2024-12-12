@@ -3,56 +3,71 @@ using UnityEngine;
 namespace Grower
 {
     /// <summary>
-    /// Handles particle effects upon collision with a box collider.
+    /// Handles particle effects upon collision with a box collider by subscribing to GrowerEvents.
     /// </summary>
     public class CollisionParticles : MonoBehaviour
     {
         [Tooltip("The particle system prefab to spawn on collision.")]
         [SerializeField] private GameObject particlePrefab;
 
-        private Rigidbody rb;
-        private Vector3 lastDirection = Vector3.zero; // Store the last movement direction
-
-        private void Awake()
+        private void OnEnable()
         {
-            rb = GetComponent<Rigidbody>();
+            GrowerEvents.OnHeadCollision.AddListener(HandleCollision);
         }
 
-        private void FixedUpdate()
+        private void OnDisable()
         {
-            // Handle directional input to update the last direction
-            if (Input.GetKey(KeyCode.W)) lastDirection = Vector3.forward;
-            else if (Input.GetKey(KeyCode.S)) lastDirection = Vector3.back;
-            else if (Input.GetKey(KeyCode.A)) lastDirection = Vector3.left;
-            else if (Input.GetKey(KeyCode.D)) lastDirection = Vector3.right;
+            GrowerEvents.OnHeadCollision.RemoveListener(HandleCollision);
         }
 
-        private void OnCollisionEnter(Collision collision)
+        /// <summary>
+        /// Handles the collision event and spawns particles at the collision point.
+        /// </summary>
+        /// <param name="collisionData">Data about the collision.</param>
+        private void HandleCollision(CollisionData collisionData)
         {
-            // Check if the collision is with a BoxCollider
-            if (collision.collider is BoxCollider && particlePrefab != null)
+            if (particlePrefab == null || collisionData.CollidedObject == null)
             {
-                // Get the collision point and adjust the Y position
-                ContactPoint contact = collision.contacts[0];
-                Vector3 particlePosition = new Vector3(contact.point.x, 2f, contact.point.z);
-
-                // Calculate the position of the particle effect very close to the center of the front face
-                // Decrease the distance by using a smaller factor (e.g. 0.2f instead of 0.5f)
-                Vector3 particleSpawnPosition = transform.position + (lastDirection.normalized * 0.4f); // Even closer to the center
-                particleSpawnPosition.y = 2f; // Keep Y position constant
-
-                // Instantiate particle effect at the adjusted position
-                GameObject particles = Instantiate(particlePrefab, particleSpawnPosition, Quaternion.identity);
-
-                // Align particle effect with the last movement direction
-                if (lastDirection != Vector3.zero)
-                {
-                    particles.transform.rotation = Quaternion.LookRotation(lastDirection);
-                }
-
-                // Optional: Destroy particles after some time
-                Destroy(particles, 2f);
+                Debug.LogWarning("Particle prefab or collided object is missing.");
+                return;
             }
+
+            // Get the collision position
+            Vector3 collisionPosition = new Vector3(
+                collisionData.ObjectCoordinates.x,
+                2f, // Fixed height for particle spawn
+                collisionData.ObjectCoordinates.y
+            );
+
+            // Spawn particles at the collision position
+            GameObject particles = Instantiate(particlePrefab, collisionPosition, Quaternion.identity);
+
+            // Align particles with the side of the collision
+            Vector3 direction = GetDirectionFromCollisionSide(collisionData.Side);
+            if (direction != Vector3.zero)
+            {
+                particles.transform.rotation = Quaternion.LookRotation(direction);
+            }
+
+            // Optional: Destroy particles after some time
+            Destroy(particles, 2f);
+        }
+
+        /// <summary>
+        /// Maps the CollisionSide enum to a direction vector.
+        /// </summary>
+        /// <param name="side">The side of the collision.</param>
+        /// <returns>A Vector3 representing the direction of the collision.</returns>
+        private Vector3 GetDirectionFromCollisionSide(CollisionSide side)
+        {
+            return side switch
+            {
+                CollisionSide.Top => Vector3.forward,
+                CollisionSide.Bottom => Vector3.back,
+                CollisionSide.Left => Vector3.left,
+                CollisionSide.Right => Vector3.right,
+                _ => Vector3.zero,
+            };
         }
     }
 }

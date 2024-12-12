@@ -17,10 +17,9 @@ namespace Grower
         private float zoomSpeed = 1f;
 
         [SerializeField, Tooltip("Maximum camera size when zooming out.")]
-        private float maxSize = 6f;
+        private float zoomOut = 6f;
 
-        [SerializeField, Tooltip("Default camera size when not zooming out.")]
-        private float defaultSize = 4f;
+        private float defaultSize;
 
         private bool isZoomingOut = false; // Flag to control zoom-out state
 
@@ -31,6 +30,11 @@ namespace Grower
                 Debug.LogError("CameraZoomController: Target camera is not assigned.");
             if (headMover == null)
                 Debug.LogError("CameraZoomController: HeadMover is not assigned.");
+        }
+
+        private void Start()
+        {
+            defaultSize = targetCamera.orthographicSize;
         }
 
         private void Update()
@@ -60,7 +64,7 @@ namespace Grower
             if (isZoomingOut)
             {
                 // Smoothly increase the camera size
-                targetCamera.orthographicSize = Mathf.Lerp(targetCamera.orthographicSize, maxSize, zoomSpeed * Time.deltaTime);
+                targetCamera.orthographicSize = Mathf.Lerp(targetCamera.orthographicSize, targetCamera.orthographicSize + zoomOut, zoomSpeed * Time.deltaTime);
             }
             else
             {
