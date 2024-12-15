@@ -47,5 +47,40 @@ namespace Grower
 
             return handler;
         }
+
+        /// <summary>
+        /// Очищає кеш спостерігачів, залишаючи лише ті, які є "незнищуваними".
+        /// </summary>
+        public void CleanupObservers()
+        {
+            var keysToRemove = new List<string>();
+
+            foreach (var entry in cachedHandlers)
+            {
+                if (entry.Value == null || !IsNonDeletable(entry.Value))
+                {
+                    keysToRemove.Add(entry.Key);
+                }
+            }
+
+            // Видаляємо всі ключі, які не відповідають умовам
+            foreach (var key in keysToRemove)
+            {
+                cachedHandlers.Remove(key);
+            }
+        }
+
+        /// <summary>
+        /// Перевіряє, чи є об'єкт "незнищуваним".
+        /// </summary>
+        private bool IsNonDeletable(IProcessObserver observer)
+        {
+            if (observer is MonoBehaviour monoBehaviour)
+            {
+                // Перевірка, чи об'єкт не знищений і прив'язаний до сцени
+                return monoBehaviour != null && monoBehaviour.gameObject != null && monoBehaviour.gameObject.scene.rootCount > 0;
+            }
+            return false;
+        }
     }
 }

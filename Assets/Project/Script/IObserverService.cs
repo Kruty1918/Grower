@@ -6,5 +6,6 @@ namespace Grower
     public interface IObserverService
     {
         IProcessObserver GetObserverById(string observerID);
+        void CleanupObservers();
     }
 }

@@ -1,10 +1,11 @@
 using System.Collections;
+using SGS29.Utilities;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
 namespace Grower
 {
-    public class SceneReloader : MonoBehaviour
+    public class SceneReloader : MonoSingleton<SceneReloader>
     {
         private ISceneReloaderUI reloaderUI;
 

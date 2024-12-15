@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace Grower
 {
@@ -8,44 +9,80 @@ namespace Grower
         [SerializeField] private string idName;
         public string ID => idName;
 
+        protected bool isFirstTimeSceneLoaded = true;
+
         private IObserverService observerService = new DefaultObserverService();
 
-        /// <summary>
-        /// Initializes the UI process with the given observer service.
-        /// </summary>
-        /// <param name="service">The observer service to use for handling and retrieving observers.</param>
         public void InitializeObserverService(IObserverService service)
         {
             observerService = service;
         }
 
-        /// <summary>
-        /// Method to execute the process. Called by the controller.
-        /// </summary>
-        /// <param name="args">Parameters passed to the process.</param>
         public abstract void Execute(params object[] args);
 
         /// <summary>
-        /// Executes a process for a list of observers.
+        /// Сповіщає спостерігачів про виконання процесу.
         /// </summary>
-        /// <param name="observerIDs">List of observer IDs.</param>
-        /// <param name="args">Process parameters.</param>
-        protected void NotifyObservers(IEnumerable<string> observerIDs, params object[] args)
+        protected void NotifyObservers(List<string> observerIDs, params object[] args)
         {
-            if (observerService == null)
-            {
-                Debug.LogError("Observer service is not initialized.");
-                return;
-            }
-
             foreach (var observerID in observerIDs)
             {
-                var handler = observerService.GetObserverById(observerID);
-                if (handler != null)
+                var observer = observerService.GetObserverById(observerID);
+                if (observer != null)
                 {
-                    handler.OnProcessExecuted(ID, args);
+                    observer.OnProcessExecuted(ID, args);
                 }
             }
+        }
+
+        /// <summary>
+        /// Метод, який викликається при завантаженні нової сцени.
+        /// </summary>
+        public virtual void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+        {
+            // Викликаємо базову логіку, але передаємо прапор, чи це перший запуск
+            bool isFirstTime = isFirstTimeSceneLoaded;
+            if (isFirstTimeSceneLoaded)
+            {
+                isFirstTimeSceneLoaded = false;
+            }
+
+            if (!isFirstTime)
+                observerService.CleanupObservers();
+        }
+
+        /// <summary>
+        /// Підписується на подію завантаження сцени.
+        /// </summary>
+        protected void SubscribeToSceneEvents()
+        {
+            SceneManager.sceneLoaded += OnSceneLoaded;
+        }
+
+        /// <summary>
+        /// Відписується від подій завантаження сцени.
+        /// </summary>
+        protected void UnsubscribeFromSceneEvents()
+        {
+            SceneManager.sceneLoaded -= OnSceneLoaded;
+        }
+
+        private void OnEnable()
+        {
+            SubscribeToSceneEvents();
+            Application.quitting += OnApplicationQuit;  // Підписка на подію виходу з гри
+        }
+
+        private void OnDisable()
+        {
+            UnsubscribeFromSceneEvents();
+            Application.quitting -= OnApplicationQuit;  // Відписка від події виходу з гри
+        }
+
+        // Обробник події виходу з гри
+        private void OnApplicationQuit()
+        {
+            isFirstTimeSceneLoaded = true; // Скидаємо прапор під час виходу з гри
         }
     }
 }
