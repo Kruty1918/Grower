@@ -58,8 +58,6 @@ namespace Grower
 
             // Calls the method to check if the level is complete
             LevelComplete = levelValidator.LevelComplete(fillCell);
-
-            Debug.Log($"Level Complete: {levelValidator.LevelComplete(fillCell)}");
         }
     }
 }

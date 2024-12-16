@@ -55,5 +55,6 @@ namespace Grower
         public static UnityEvent<GameStateType> OnGameStateChange = new UnityEvent<GameStateType>();
 
         public static UnityEvent OnStartGame = new UnityEvent();
+        public static UnityEvent OnLevelRestart = new UnityEvent();
     }
 }
