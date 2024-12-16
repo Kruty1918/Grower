@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Threading.Tasks;
 using SGS29.Utilities;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -7,13 +8,15 @@ namespace Grower
 {
     public class SceneReloader : MonoSingleton<SceneReloader>
     {
+        [SerializeField] private SceneValidatorBase sceneValidator; // Validator for next scene selection
         private ISceneReloaderUI reloaderUI;
+        private LevelResult currentLevelResult;
 
         private void Start()
         {
             reloaderUI = GetComponent<ISceneReloaderUI>();
 
-            // Забезпечуємо, що об'єкт не буде знищено при зміні сцени
+            // Ensure the object persists across scene loads
             DontDestroyOnLoad(gameObject);
         }
 
@@ -27,37 +30,55 @@ namespace Grower
             GrowerEvents.OnLevelEnd.RemoveListener(OnLevelEnd);
         }
 
+        /// <summary>
+        /// Triggered at the end of a level.
+        /// </summary>
+        /// <param name="result">The result of the level.</param>
         private void OnLevelEnd(LevelResult result)
         {
-            // Починаємо анімацію затемнення екрану
-            reloaderUI.TransitionIn();
+            currentLevelResult = result;
 
-            // Після завершення анімації починаємо завантаження нової сцени
-            Invoke(nameof(StartSceneReload), reloaderUI.TransitionInDuration);
+            // Start screen transition
+            reloaderUI?.TransitionIn();
+
+            // Begin scene reload after transition duration
+            Invoke(nameof(StartSceneReload), reloaderUI?.TransitionInDuration ?? 0f);
         }
 
-        private void StartSceneReload()
+        private async void StartSceneReload()
         {
-            // Завантажуємо сцену асинхронно
-            StartCoroutine(LoadSceneAsync());
-        }
-
-        private IEnumerator LoadSceneAsync()
-        {
-            // Отримуємо поточну сцену
-            var currentSceneIndex = SceneManager.GetActiveScene().buildIndex;
-
-            // Завантажуємо сцену асинхронно
-            AsyncOperation asyncLoad = SceneManager.LoadSceneAsync(currentSceneIndex);
-
-            // Чекаємо завершення завантаження
-            while (!asyncLoad.isDone)
+            if (sceneValidator == null)
             {
-                yield return null;
+                Debug.LogError("SceneValidator is not assigned.");
+                return;
             }
 
-            // Після завантаження запускаємо проявлення
+            int nextSceneIndex = sceneValidator.GetNextSceneBuildIndex(currentLevelResult);
+            if (nextSceneIndex < 0 || nextSceneIndex >= SceneManager.sceneCountInBuildSettings)
+            {
+                Debug.LogError($"Invalid scene index: {nextSceneIndex}");
+                return;
+            }
+
+            await LoadSceneAsync(nextSceneIndex);
+            OnSceneLoadedFeedback(currentLevelResult);
+        }
+
+        private async Task LoadSceneAsync(int nextSceneIndex)
+        {
+            AsyncOperation asyncLoad = SceneManager.LoadSceneAsync(nextSceneIndex);
+
+            while (!asyncLoad.isDone)
+            {
+                await Task.Yield();
+            }
+
             reloaderUI.TransitionOut();
+        }
+
+        private void OnSceneLoadedFeedback(LevelResult result)
+        {
+            SM.Instance<GameManager>().LastLevelFeedback(result);
         }
     }
 }

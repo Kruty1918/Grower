@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using SGS29.Utilities;
+using Sirenix.OdinInspector;
 using UnityEngine;
 
 namespace Grower
@@ -8,7 +9,10 @@ namespace Grower
     {
         [SerializeField] private List<ProcessBase> processes;
         private IProcessExecutor processExecutor;
-        public GameStateType CurrentState { get; private set; }
+
+        [SerializeField, ReadOnly]
+        private GameStateType _currentState;
+        public GameStateType CurrentState { get => _currentState; }
 
         protected override void Awake()
         {
@@ -23,8 +27,8 @@ namespace Grower
 
         public void SetGameState(GameStateType stateType)
         {
-            CurrentState = stateType;
-            GrowerEvents.OnGameStateChange.Invoke(CurrentState);
+            _currentState = stateType;
+            GrowerEvents.OnGameStateChange.Invoke(_currentState);
         }
 
         private void OnGameState()

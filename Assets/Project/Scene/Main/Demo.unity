@@ -500,8 +500,8 @@ GameObject:
   - component: {fileID: 194304373}
   - component: {fileID: 194304372}
   - component: {fileID: 194304375}
-  - component: {fileID: 194304376}
   - component: {fileID: 194304377}
+  - component: {fileID: 194304376}
   m_Layer: 5
   m_Name: 'Tap To Start Text '
   m_TagString: Untagged
@@ -669,6 +669,18 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
+      - m_Target: {fileID: 194304375}
+        m_TargetAssemblyTypeName: UnityEngine.UI.Selectable, UnityEngine.UI
+        m_MethodName: set_interactable
+        m_Mode: 6
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
       - m_Target: {fileID: 194304377}
         m_TargetAssemblyTypeName: Grower.ProcessCaller, Assembly-CSharp
         m_MethodName: Call
@@ -690,40 +702,16 @@ MonoBehaviour:
   m_GameObject: {fileID: 194304370}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 6ed7ec162cb4a0148afd363d1e070921, type: 3}
+  m_Script: {fileID: 11500000, guid: 6721f58aa4e338742a27fcf58f6467bc, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   textMeshPro: {fileID: 194304372}
-  glitchDuration: 1
-  moveDistance: 50
+  animationDuration: 1
+  moveDistanceY: 50
   fadeOutDuration: 1
   onAnimationComplete:
     m_PersistentCalls:
-      m_Calls:
-      - m_Target: {fileID: 194304375}
-        m_TargetAssemblyTypeName: UnityEngine.UI.Selectable, UnityEngine.UI
-        m_MethodName: set_interactable
-        m_Mode: 6
-        m_Arguments:
-          m_ObjectArgument: {fileID: 0}
-          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
-          m_IntArgument: 0
-          m_FloatArgument: 0
-          m_StringArgument: 
-          m_BoolArgument: 0
-        m_CallState: 2
-      - m_Target: {fileID: 1834365756}
-        m_TargetAssemblyTypeName: Grower.GameStarter, Assembly-CSharp
-        m_MethodName: Play
-        m_Mode: 1
-        m_Arguments:
-          m_ObjectArgument: {fileID: 0}
-          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
-          m_IntArgument: 0
-          m_FloatArgument: 0
-          m_StringArgument: 
-          m_BoolArgument: 0
-        m_CallState: 2
+      m_Calls: []
 --- !u!114 &194304377
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -764,7 +752,7 @@ CanvasGroup:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 205316966}
   m_Enabled: 1
-  m_Alpha: 1
+  m_Alpha: 0
   m_Interactable: 1
   m_BlocksRaycasts: 1
   m_IgnoreParentGroups: 0
@@ -1214,6 +1202,7 @@ MonoBehaviour:
   processes:
   - {fileID: 11400000, guid: 8c22bcf7bde4b74419c71dbfd06d092f, type: 2}
   - {fileID: 11400000, guid: f6ddcf3a574d4c440a87a8cfd83526ba, type: 2}
+  _currentState: 0
 --- !u!4 &700848111
 Transform:
   m_ObjectHideFlags: 0
@@ -1672,8 +1661,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   canvasGroup: {fileID: 205316967}
-  transitionInDuration: 1
-  transitionOutDuration: 1
+  transitionInDuration: 0.3
+  transitionOutDuration: 0.5
 --- !u!114 &944639494
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1686,6 +1675,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: dfc100ba97f1db54bab2f662026f1df0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  sceneValidator: {fileID: 11400000, guid: b30db2faf5809ee42b3c196d23ffce8a, type: 2}
 --- !u!1 &963194225 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 1083364345868796292, guid: e856a996b678947429cccef18982d501, type: 3}
@@ -2801,6 +2791,50 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1868892665
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1868892667}
+  - component: {fileID: 1868892666}
+  m_Layer: 0
+  m_Name: GameManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1868892666
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1868892665}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ffb109debc48f4b4abbc22ba80abd76d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+--- !u!4 &1868892667
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1868892665}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 74.02195, y: 585.37994, z: -0.7367693}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &1926810105
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -3493,3 +3527,4 @@ SceneRoots:
   - {fileID: 1834365757}
   - {fileID: 1551912894}
   - {fileID: 944639492}
+  - {fileID: 1868892667}

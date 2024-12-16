@@ -9,10 +9,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: bc634e0780d640f4bb6f9f30cc1b226a, type: 3}
-  m_Name: StartGame
+  m_Script: {fileID: 11500000, guid: ce0c7c6b31960ec4f960dbfcd393d9a2, type: 3}
+  m_Name: Default Scene Validator
   m_EditorClassIdentifier: 
-  idName: StartGame
-  observer_Ids:
-  - 'Tap To Start Text '
-  - GameStarter
+  defaultNextSceneIndex: 1
