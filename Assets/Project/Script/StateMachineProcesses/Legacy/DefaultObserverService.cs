@@ -8,8 +8,14 @@ namespace Grower
     /// </summary>
     public class DefaultObserverService : IObserverService
     {
+        // A dictionary to cache the observers by their ID
         private readonly Dictionary<string, IProcessObserver> cachedHandlers = new Dictionary<string, IProcessObserver>();
 
+        /// <summary>
+        /// Retrieves an observer by its ID.
+        /// </summary>
+        /// <param name="observerID">The ID of the observer to retrieve.</param>
+        /// <returns>The observer associated with the given ID, or null if not found.</returns>
         public IProcessObserver GetObserverById(string observerID)
         {
             if (string.IsNullOrWhiteSpace(observerID))
@@ -18,18 +24,24 @@ namespace Grower
                 return null;
             }
 
+            // Try to find the observer in the cache
             if (!cachedHandlers.TryGetValue(observerID, out var handler))
             {
-                handler = FindHandlerById(observerID);
+                handler = FindHandlerById(observerID); // If not found in cache, look for it in the scene
                 if (handler != null)
                 {
-                    cachedHandlers[observerID] = handler;
+                    cachedHandlers[observerID] = handler; // Cache the handler if found
                 }
             }
 
             return handler;
         }
 
+        /// <summary>
+        /// Finds a handler by its observer ID by searching the scene for the GameObject with the given ID.
+        /// </summary>
+        /// <param name="observerID">The ID of the observer to find.</param>
+        /// <returns>The handler associated with the given observer ID, or null if not found.</returns>
         private IProcessObserver FindHandlerById(string observerID)
         {
             var observerObject = GameObject.Find(observerID);
@@ -49,21 +61,22 @@ namespace Grower
         }
 
         /// <summary>
-        /// Очищає кеш спостерігачів, залишаючи лише ті, які є "незнищуваними".
+        /// Cleans up the cached observers, keeping only those that are "non-deletable".
         /// </summary>
         public void CleanupObservers()
         {
             var keysToRemove = new List<string>();
 
+            // Check each cached observer and mark those that should be removed
             foreach (var entry in cachedHandlers)
             {
                 if (entry.Value == null || !IsNonDeletable(entry.Value))
                 {
-                    keysToRemove.Add(entry.Key);
+                    keysToRemove.Add(entry.Key); // Mark for removal if not "non-deletable"
                 }
             }
 
-            // Видаляємо всі ключі, які не відповідають умовам
+            // Remove the marked observers from the cache
             foreach (var key in keysToRemove)
             {
                 cachedHandlers.Remove(key);
@@ -71,13 +84,15 @@ namespace Grower
         }
 
         /// <summary>
-        /// Перевіряє, чи є об'єкт "незнищуваним".
+        /// Checks whether the observer is "non-deletable", i.e., it is still attached to the scene.
         /// </summary>
+        /// <param name="observer">The observer to check.</param>
+        /// <returns>True if the observer is non-deletable, otherwise false.</returns>
         private bool IsNonDeletable(IProcessObserver observer)
         {
             if (observer is MonoBehaviour monoBehaviour)
             {
-                // Перевірка, чи об'єкт не знищений і прив'язаний до сцени
+                // Check if the object is still attached to the scene and is not destroyed
                 return monoBehaviour != null && monoBehaviour.gameObject != null && monoBehaviour.gameObject.scene.rootCount > 0;
             }
             return false;

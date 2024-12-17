@@ -2,46 +2,61 @@ using UnityEngine;
 
 namespace Grower
 {
+    /// <summary>
+    /// Adjusts the orthographic size of the camera to fit a specified bounds area.
+    /// </summary>
     public class CameraOrthographicSizeAdjuster : MonoBehaviour
     {
-        // Мінімальні та максимальні межі області, яку потрібно охопити
+        /// <summary>
+        /// Minimum bounds of the area to be covered.
+        /// </summary>
         public Vector3 boundsMin = new Vector3(-5f, 0f, -5f);
+
+        /// <summary>
+        /// Maximum bounds of the area to be covered.
+        /// </summary>
         public Vector3 boundsMax = new Vector3(5f, 0f, 5f);
 
         [Header("Camera Settings")]
-        public Camera mainCamera; // Камера, для якої буде змінюватись розмір ортографії
+        /// <summary>
+        /// The camera whose orthographic size will be adjusted.
+        /// </summary>
+        public Camera mainCamera; // The camera for which the orthographic size will change
 
+        /// <summary>
+        /// Draws the bounds in the editor for visualization.
+        /// </summary>
         private void OnDrawGizmos()
         {
-            // Малюємо межі в редакторі для візуалізації
             Gizmos.color = Color.green;
             Gizmos.DrawWireCube((boundsMin + boundsMax) / 2, boundsMax - boundsMin);
         }
 
+        /// <summary>
+        /// Initializes the camera and adjusts its size on start.
+        /// </summary>
         void Start()
         {
-            // Якщо камера не призначена, використовуємо камеру за замовчуванням
             if (mainCamera == null)
             {
                 mainCamera = Camera.main;
             }
 
-            // Визначаємо розмір ортографії, щоб охопити всі об'єкти в межах
             AdjustCameraSize();
         }
 
+        /// <summary>
+        /// Adjusts the camera's orthographic size to fit the specified bounds.
+        /// </summary>
         void AdjustCameraSize()
         {
             if (mainCamera.orthographic)
             {
-                // Обчислюємо відстань по осі X і Y
                 float width = boundsMax.x - boundsMin.x;
                 float height = boundsMax.z - boundsMin.z;
 
-                // Визначаємо оптимальний розмір ортографії для охоплення всієї області
                 float requiredSize = Mathf.Max(width / mainCamera.aspect, height) / 2f;
 
-                // Задаємо розмір ортографії
                 mainCamera.orthographicSize = requiredSize;
             }
             else
@@ -50,10 +65,11 @@ namespace Grower
             }
         }
 
-        // Викликається, коли зміни в сцені і потрібно адаптувати камеру
+        /// <summary>
+        /// Updates the camera size in the editor when bounds are changed.
+        /// </summary>
         private void OnValidate()
         {
-            // Оновлюємо камеру в редакторі при зміні меж
             if (mainCamera != null)
             {
                 AdjustCameraSize();

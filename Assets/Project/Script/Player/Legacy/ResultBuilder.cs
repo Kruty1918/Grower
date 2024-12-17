@@ -3,17 +3,30 @@ using System.Collections.Generic;
 
 namespace Grower
 {
+    /// <summary>
+    /// A class that builds the result data for a level.
+    /// It collects relevant information such as player movement, level index, and time spent.
+    /// </summary>
     public class ResultBuilder
     {
-        private readonly HeadMover headMover;
-        private readonly LevelValidator levelValidator;
+        private readonly HeadMover headMover;  // The component responsible for moving the player
+        private readonly LevelValidator levelValidator;  // The validator used to check the level's completion status
 
+        /// <summary>
+        /// Initializes a new instance of the ResultBuilder class.
+        /// </summary>
+        /// <param name="headMover">The HeadMover component for player movement tracking.</param>
+        /// <param name="levelValidator">The LevelValidator used for validating level progress.</param>
         public ResultBuilder(HeadMover headMover, LevelValidator levelValidator)
         {
             this.headMover = headMover;
             this.levelValidator = levelValidator;
         }
 
+        /// <summary>
+        /// Builds the LevelResult containing information about the player's performance in the level.
+        /// </summary>
+        /// <returns>A LevelResult object containing the collected data.</returns>
         public LevelResult LevelResultBuild()
         {
             // Collecting data for LevelResult
